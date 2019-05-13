@@ -1,0 +1,29 @@
+type file
+id ScribbleCodeGen
+title
+    ScribbleCodeGen
+owners
+    Fangyi Zhou
+authors 
+    Fangyi Zhou
+projectUrl
+    https://github.com/fangyi-zhou/ScribbleCodeGen
+iconUrl
+    https://raw.githubusercontent.com/fangyi-zhou/ScribbleCodeGen/master/docs/files/img/logo.png
+licenseUrl
+    https://github.com/fangyi-zhou/ScribbleCodeGen/blob/master/LICENSE.txt
+requireLicenseAcceptance
+    false
+language
+    F#
+copyright
+    Copyright 2017
+tags
+    fsharp
+summary
+    Generate F# Files from Scribble output
+description
+    Generate F# Files from Scribble Protocols
+
+files
+	../../bin/ScribbleCodeGen ==> lib
