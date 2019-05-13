@@ -1,0 +1,11 @@
+
+digraph G {
+compound = true;
+"20" [ label="20: " ];
+"20" -> "20" [ label="P?SecIn(r3: int, r4: int)" ];
+"20" -> "21" [ label="P?Close(_dum5: _Unit)" ];
+"21" [ label="21: " ];
+"20" -> "20" [ label="P?BothIn(r1: int)" ];
+"20" -> "20" [ label="P?SecOut(r2: int)" ];
+"20" -> "20" [ label="P?BothOut(_dum3: _Unit)" ];
+}
