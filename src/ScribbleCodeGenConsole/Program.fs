@@ -4,10 +4,6 @@ open System.IO
 open System.Text.RegularExpressions
 open ScribbleCodeGen
 
-type Foo = class
-    end
-
-
 let fixQuotes stuff =
     (* DotParser has issues parsing escaped quotes, we replace them with single quotes *)
     (* This can be removed after https://github.com/auduchinok/DotParser/pull/6 is merged *)

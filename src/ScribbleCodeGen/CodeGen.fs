@@ -29,6 +29,12 @@ module CodeGen =
     let mkStateName protocol state =
         sprintf "%s_State%d" protocol state
 
+    let allRoles ((_, transitions) : CFSM) =
+        let accumRoles roles _ transitions =
+            let newRoles = List.map (fun (t: Transition) -> t.partner) transitions
+            Set.union (Set.ofList newRoles) roles
+        Map.fold accumRoles Set.empty transitions
+
     let isDummy (x : string) = x.StartsWith("_")
 
     let moduleName = ref "ScribbleGenerated"
@@ -48,21 +54,28 @@ module CodeGen =
         writer.WriteLine()
         unindent writer
 
-    let writeContentToFile init protocol (content: Content) (filename: string) =
-        use writer = new IndentedTextWriter(new StreamWriter(filename))
+    let writeContents (writer: IndentedTextWriter) (content: Content) =
+        Map.iter (writeObject writer) content
+
+    let writeRole (writer: IndentedTextWriter) (role: Role) =
+        writer.Write(sprintf "type %s = %s" role role)
+        writer.WriteLine()
+
+    let generateCode (cfsm : CFSM) protocol localRole =
+        let outputFile = "ScribbleGenerated.fs" (* TODO: Remove hardcoding *)
+        use fileWriter = new StreamWriter(outputFile)
+        use writer = new IndentedTextWriter(fileWriter)
         writer.Write("module " + !moduleName)
         writer.WriteLine()
         writer.Write("(* This file is GENERATED, do not modify manually *)")
         writer.WriteLine()
-        Map.iter (writeObject writer) content
-        writer.Write(sprintf "type %sInit = %s" protocol (mkStateName protocol init))
-        writer.WriteLine()
-        writer.Flush()
-
-    let generateCode (cfsm : CFSM) protocol localRole =
         let init, transistions = cfsm
         let states = CFSMConversion.allStates cfsm
+        let roles = allRoles cfsm
+        Set.iter (writeRole writer) roles
         let content : Content = List.map (fun state -> mkStateName protocol state, newObject) states |> Map.ofList
-        let outputFile = "ScribbleGenerated.fs" (* TODO: Remove hardcoding *)
-        writeContentToFile init protocol content outputFile
+        writer.Write(sprintf "type %sInit = %s" protocol (mkStateName protocol init))
+        writer.WriteLine()
+        writeContents writer content
+        writer.Flush()
         ()
