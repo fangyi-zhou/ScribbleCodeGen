@@ -4,6 +4,10 @@ open System.IO
 open System.Text.RegularExpressions
 open ScribbleCodeGen
 
+type Foo = class
+    end
+
+
 let fixQuotes stuff =
     (* DotParser has issues parsing escaped quotes, we replace them with single quotes *)
     (* This can be removed after https://github.com/auduchinok/DotParser/pull/6 is merged *)
@@ -21,6 +25,5 @@ let main argv =
         let localRole = argv.[2]
         let content = File.ReadAllText(filename)
         let content = fixQuotes content
-        printfn "%s" content
-        Library.parseScribbleOutput content protocol localRole
+        Library.processScribbleOutput content protocol localRole
         0

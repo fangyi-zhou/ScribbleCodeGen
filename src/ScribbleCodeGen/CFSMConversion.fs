@@ -34,7 +34,7 @@ module CFSMConversion =
         let transition = parseTransition fromState toState label
         addTransition transitions transition
 
-    let convert (graph: GraphData.GraphData) protocol localRole : CFSM =
+    let convert (graph: GraphData.GraphData) : CFSM =
         let edges = graph.Edges
         let init = graph.Nodes |> Map.toList |> List.map (fst >> int) |> List.min
         let transitionMap = Map.fold convertEdge newTransitionMap edges
