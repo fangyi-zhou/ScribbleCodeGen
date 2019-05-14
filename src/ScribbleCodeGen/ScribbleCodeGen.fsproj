@@ -15,7 +15,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Library.fs" />
-    <None Include="Scripts\Script.fsx" />
     <None Include="paket.references" />
     <None Include="paket.template" />
   </ItemGroup>

@@ -2,6 +2,7 @@ framework: auto-detect
 
 source https://nuget.org/api/v2
 
+nuget DotParser
 nuget FSharp.Core
 nuget Argu
 

@@ -1,22 +1,15 @@
-namespace ScribbleCodeGen
+module Main
 
-open CommandLine
-open System
+open System.IO
+open ScribbleCodeGen
 
-module console1 =
-
-    [<EntryPoint>]
-    let main argv = 
-        printfn "%A" argv
-
-        let parsedCommand = parse (System.Reflection.Assembly.GetExecutingAssembly().GetName().Name) argv
-
-        match parsedCommand.Error with
-            | Some e -> 
-                printfn "%s" parsedCommand.Usage
-            | None -> 
-                printfn "%A" parsedCommand
-
-        printfn "Hit any key to exit."
-        System.Console.ReadKey() |> ignore
+[<EntryPoint>]
+let main argv =
+    if argv.Length = 0 then
+        printfn "Please provide a file for input!"
+        1
+    else
+        let filename = argv.[0]
+        let content = File.ReadAllText(filename)
+        Library.parseScribbleOutput content
         0
