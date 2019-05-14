@@ -1,7 +1,13 @@
 module Main
 
 open System.IO
+open System.Text.RegularExpressions
 open ScribbleCodeGen
+
+let fixQuotes stuff =
+    (* DotParser has issues parsing escaped quotes, we replace them with single quotes *)
+    (* This can be removed after https://github.com/auduchinok/DotParser/pull/6 is merged *)
+    Regex.Replace(stuff, "\\\\\"", "$")
 
 [<EntryPoint>]
 let main argv =
@@ -11,5 +17,6 @@ let main argv =
     else
         let filename = argv.[0]
         let content = File.ReadAllText(filename)
+        let content = fixQuotes content
         Library.parseScribbleOutput content
         0
