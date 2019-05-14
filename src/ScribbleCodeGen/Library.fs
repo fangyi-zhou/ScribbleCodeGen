@@ -6,7 +6,9 @@ module Library =
 
     let moduleName = "ScribbleGenerated"
 
-    let parseScribbleOutput (content: string) =
+    let parseScribbleOutput content protocol localRole =
         let parsed = parse content
-        printfn "%A" parsed
+        let cfsm = CFSMConversion.convert parsed protocol localRole
+        printfn "parsed: %A" parsed
+        printfn "CFSM: %A" cfsm
         ()

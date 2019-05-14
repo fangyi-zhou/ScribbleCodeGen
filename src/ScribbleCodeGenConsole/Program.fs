@@ -11,12 +11,16 @@ let fixQuotes stuff =
 
 [<EntryPoint>]
 let main argv =
-    if argv.Length = 0 then
-        printfn "Please provide a file for input!"
+    if argv.Length <> 3 then
+        printfn "Invalid usage!"
+        (* TODO Usage *)
         1
     else
         let filename = argv.[0]
+        let protocol = argv.[1]
+        let localRole = argv.[2]
         let content = File.ReadAllText(filename)
         let content = fixQuotes content
-        Library.parseScribbleOutput content
+        printfn "%s" content
+        Library.parseScribbleOutput content protocol localRole
         0
