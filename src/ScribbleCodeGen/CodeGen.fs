@@ -121,7 +121,7 @@ module CodeGen =
         let methodName = sprintf "%s%s" (convertAction action) label
         let methodArgs = convertPayload action ((partner, partner) :: payload)
         let method = sprintf "member __.%s(%s) : %s = failwith \"TODO\"" methodName methodArgs (mkStateName toState)
-        { object with methods = method :: object.methods}
+        { object with methods = method :: object.methods }
 
     let stateHasExternalChoice transitions =
         let receiveCount = List.filter (fun t -> t.action = Receive) >> List.length
