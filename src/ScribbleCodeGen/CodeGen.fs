@@ -25,8 +25,8 @@ module CodeGen =
         "_Unit", "unit";
     ]
 
-    let mkStateName protocol state =
-        sprintf "%s_State%d" protocol state
+    let mkStateName state =
+        sprintf "State%d" state
 
     let allRoles ((_, transitions) : CFSM) =
         let accumRoles roles _ transitions =
@@ -39,6 +39,7 @@ module CodeGen =
     let isDummy (x : string) = x.StartsWith("_")
 
     let moduleName = ref "ScribbleGenerated"
+    let fileName = ref "ScribbleGenerated.fs"
 
     let indent (writer: IndentedTextWriter) =
         writer.Indent <- writer.Indent + 1
@@ -46,37 +47,79 @@ module CodeGen =
     let unindent (writer: IndentedTextWriter) =
         writer.Indent <- writer.Indent - 1
 
-    let writeObject (writer: IndentedTextWriter) name obj =
-        writer.Write(sprintf "type %s = class" name)
+    let writeln (writer: IndentedTextWriter) (str: string) =
+        writer.Write(str)
         writer.WriteLine()
-        indent writer
-        (* TODO: write other stuff *)
-        writer.Write("end")
-        writer.WriteLine()
-        unindent writer
+
+    let writeObject (writer: IndentedTextWriter) isFirst (name, (obj: Object))  =
+        if isFirst then
+            writeln writer (sprintf "type %s = class" name)
+            indent writer
+        else
+            writeln writer (sprintf "and %s = class" name)
+        List.iter (writeln writer) obj.members
+        List.iter (writeln writer) obj.methods
+        writeln writer "end"
 
     let writeContents (writer: IndentedTextWriter) (content: Content) =
-        Map.iter (writeObject writer) content
+        let content = Map.toSeq content
+        if Seq.isEmpty content then ()
+        else
+            let first = Seq.head content
+            let tail = Seq.tail content
+            writeObject writer true (*isFirst*) first
+            Seq.iter (writeObject writer false (*isFirst*)) tail
+            unindent writer
 
     let writeRole (writer: IndentedTextWriter) (role: Role) =
-        writer.Write(sprintf "type %s = %s" role role)
-        writer.WriteLine()
+        writeln writer (sprintf "type %s = %s" role role)
+
+    let convertAction action =
+        match action with
+        | Send -> "send"
+        | Receive -> "receive"
+        | Accept -> "accept"
+        | Request -> "request"
+
+    let convertSinglePayload (var, ty) =
+        let ty =
+            match Map.tryFind ty defaultTypeAliasMap with
+            | Some alias -> alias
+            | None -> ty
+        sprintf "%s : %s" var ty
+
+    let convertPayload payloads =
+        List.filter (fst >> isDummy >> not) payloads |> List.map convertSinglePayload |> Seq.ofList |> String.concat ", "
+
+    let addSingleTransition (object: Object) (transition: Transition) =
+        let toState = transition.toState
+        let action = transition.action
+        let partner = transition.partner
+        let label = transition.label
+        let payload = transition.payload
+        let methodName = sprintf "%s%s" (convertAction action) label
+        let methodArgs = convertPayload ((partner, partner) :: payload)
+        let method = sprintf "member __.%s(%s) : %s = failwith \"TODO\"" methodName methodArgs (mkStateName toState)
+        { object with methods = method :: object.methods}
+
+    let addTransition (content: Content) state transition =
+        let stateName = mkStateName state
+        let stateObj = Map.find stateName content
+        let stateObj = List.fold addSingleTransition stateObj transition
+        Map.add stateName stateObj content
 
     let generateCode (cfsm : CFSM) protocol localRole =
-        let outputFile = "ScribbleGenerated.fs" (* TODO: Remove hardcoding *)
-        use fileWriter = new StreamWriter(outputFile)
+        use fileWriter = new StreamWriter(!fileName)
         use writer = new IndentedTextWriter(fileWriter)
-        writer.Write("module " + !moduleName)
-        writer.WriteLine()
-        writer.Write("(* This file is GENERATED, do not modify manually *)")
-        writer.WriteLine()
-        let init, transistions = cfsm
+        writeln writer (sprintf "module %s%s%s" !moduleName  protocol localRole)
+        writeln writer ("(* This file is GENERATED, do not modify manually *)")
+        let init, transitions = cfsm
         let states = allStates cfsm
         let roles = allRoles cfsm
         Set.iter (writeRole writer) roles
-        let content : Content = List.map (fun state -> mkStateName protocol state, newObject) states |> Map.ofList
-        writer.Write(sprintf "type %sInit = %s" protocol (mkStateName protocol init))
-        writer.WriteLine()
+        let content : Content = List.map (fun state -> mkStateName state, newObject) states |> Map.ofList
+        let content = Map.fold addTransition content transitions
+        writeln writer (sprintf "type %sInit = %s" protocol (mkStateName init))
         writeContents writer content
         writer.Flush()
         ()
