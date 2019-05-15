@@ -1,12 +1,8 @@
 namespace ScribbleCodeGen
 
-open DotParser
-
 module CFSMConversion =
 
     let newTransitionMap = Map.empty
-
-    let allStates : CFSM -> State list = snd >> Map.toList >> List.map (fst >> int)
 
     let addTransition (transitions: TransitionMap) (transition: Transition) : TransitionMap =
         let from = transition.fromState
@@ -36,6 +32,8 @@ module CFSMConversion =
 
     let convert (graph: GraphData.GraphData) : CFSM =
         let edges = graph.Edges
-        let init = graph.Nodes |> Map.toList |> List.map (fst >> int) |> List.min
-        let transitionMap = Map.fold convertEdge newTransitionMap edges
+        let nodes = graph.Nodes |> Map.toList |> List.map (fst >> int)
+        let init = List.min nodes
+        let initMap = List.map (fun node -> node, []) nodes |> Map.ofList
+        let transitionMap = Map.fold convertEdge initMap edges
         init, transitionMap

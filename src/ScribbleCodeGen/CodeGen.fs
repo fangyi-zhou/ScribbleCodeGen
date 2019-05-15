@@ -1,6 +1,5 @@
 namespace ScribbleCodeGen
 open System.IO
-open System.IO
 open System.CodeDom.Compiler
 
 module CodeGen =
@@ -34,6 +33,8 @@ module CodeGen =
             let newRoles = List.map (fun (t: Transition) -> t.partner) transitions
             Set.union (Set.ofList newRoles) roles
         Map.fold accumRoles Set.empty transitions
+
+    let allStates : CFSM -> State list = snd >> Map.toList >> List.map (fst >> int)
 
     let isDummy (x : string) = x.StartsWith("_")
 
@@ -70,7 +71,7 @@ module CodeGen =
         writer.Write("(* This file is GENERATED, do not modify manually *)")
         writer.WriteLine()
         let init, transistions = cfsm
-        let states = CFSMConversion.allStates cfsm
+        let states = allStates cfsm
         let roles = allRoles cfsm
         Set.iter (writeRole writer) roles
         let content : Content = List.map (fun state -> mkStateName protocol state, newObject) states |> Map.ofList
