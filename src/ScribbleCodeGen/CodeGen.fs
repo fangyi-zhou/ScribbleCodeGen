@@ -111,7 +111,7 @@ module CodeGen =
         let roleUnion = Union [role]
         Map.add role roleUnion content
 
-    let generateCodeContent (cfsm : CFSM) protocol localRole =
+    let generateCodeContentVanillaApi cfsm =
         let _, transitions = cfsm
         let states = allStates cfsm
         let roles = allRoles cfsm
@@ -120,3 +120,11 @@ module CodeGen =
         let content = Map.fold addTransition content transitions
         let content = Map.add "End" newObject content (* The `End` object marks the end of communication *)
         content
+
+    let generateCodeContentEventStyleApi cfsm =
+        failwith "TODO"
+
+    let generateCodeContent (cfsm : CFSM) eventStyleApi =
+        if eventStyleApi
+            then generateCodeContentEventStyleApi cfsm
+            else generateCodeContentVanillaApi cfsm

@@ -53,14 +53,18 @@ module CodePrinter =
                 writeTypeDef writer true first
                 List.iter (writeTypeDef writer false) rest
 
-    let generateCode (cfsm : CFSM) protocol localRole =
+    let generateCode (cfsm : CFSM) protocol localRole eventStyleApi =
         use fileWriter = new StreamWriter(!fileName)
         use writer = new IndentedTextWriter(fileWriter)
         writeln writer (sprintf "module %s%s%s" !moduleName  protocol localRole)
         writeln writer ("(* This file is GENERATED, do not modify manually *)")
-        let content = generateCodeContent cfsm protocol localRole
-        let init, _ = cfsm
-        writeContents writer content
-        writeln writer (sprintf "let init = %s" (mkStateName init))
+        let content = generateCodeContent cfsm eventStyleApi
+        if not eventStyleApi
+        then
+            let init, _ = cfsm
+            writeContents writer content
+            writeln writer (sprintf "let init = %s" (mkStateName init))
+        else
+            ()
         writer.Flush()
         ()
