@@ -6,15 +6,20 @@ module CodeGen =
 
     type Method = string
     type Member = string
+    type UnionCase = string
 
     type Object = {
         methods : Method list
         members : Member list
     }
 
-    type Content = Map<string, Object>
+    type TypeDef =
+        | Object of Object
+        | Union of UnionCase list
 
-    let newObject = {
+    type Content = Map<string, TypeDef>
+
+    let newObject = Object {
         methods = []
         members = []
     }
@@ -51,25 +56,38 @@ module CodeGen =
         writer.Write(str)
         writer.WriteLine()
 
-    let writeObject (writer: IndentedTextWriter) isFirst (name, (obj: Object))  =
+    let writeObject (writer: IndentedTextWriter) isFirst name obj =
         if isFirst then
             writeln writer (sprintf "type %s() = class" name)
-            indent writer
         else
             writeln writer (sprintf "and %s() = class" name)
+        indent writer
         List.iter (writeln writer) obj.members
         List.iter (writeln writer) obj.methods
         writeln writer "end"
+        unindent writer
+
+    let writeUnion (writer: IndentedTextWriter) isFirst name union =
+        if isFirst then
+            writeln writer (sprintf "type %s =" name)
+        else
+            writeln writer (sprintf "and %s =" name)
+        indent writer
+        List.iter (fun unioncase -> writeln writer (sprintf "| %s" unioncase)) union
+        unindent writer
+
+    let writeTypeDef (writer: IndentedTextWriter) isFirst (name, typeDef) =
+        match typeDef with
+        | Union u -> writeUnion writer isFirst name u
+        | Object o -> writeObject writer isFirst name o
 
     let writeContents (writer: IndentedTextWriter) (content: Content) =
-        let content = Map.toSeq content
-        if Seq.isEmpty content then ()
-        else
-            let first = Seq.head content
-            let tail = Seq.tail content
-            writeObject writer true (*isFirst*) first
-            Seq.iter (writeObject writer false (*isFirst*)) tail
-            unindent writer
+        let content = Map.toList content
+        match content with
+            | [] -> ()
+            | first :: rest ->
+                writeTypeDef writer true first
+                List.iter (writeTypeDef writer false) rest
 
     let writeRole (writer: IndentedTextWriter) (role: Role) =
         writeln writer (sprintf "type %s = %s" role role)
@@ -105,17 +123,40 @@ module CodeGen =
         let method = sprintf "member __.%s(%s) : %s = failwith \"TODO\"" methodName methodArgs (mkStateName toState)
         { object with methods = method :: object.methods}
 
+    let stateHasExternalChoice transitions =
+        let receiveCount = List.filter (fun t -> t.action = Receive) >> List.length
+        receiveCount transitions > 1
+
+    let generateChoices (content: Content) state transition =
+        let labels = List.distinct (List.map (fun t -> t.label, t.toState) transition)
+        let mkLabelUnionCaseName (label, toState) = sprintf "Choice%d%s of %s" state label (mkStateName toState)
+        let labelUnionCases = List.map mkLabelUnionCaseName labels
+        let unionName = sprintf "Choice%d" state
+        Map.add unionName (Union labelUnionCases) content
+
     let addTransition (content: Content) state transition =
         let stateName = mkStateName state
+        let hasExternalChoice = stateHasExternalChoice transition
         let stateObj = Map.find stateName content
         let stateObj =
-            if List.isEmpty transition
-            then
+            match stateObj with
+            | Object o -> o
+            | _ -> failwithf "Expecting an object for state %d" state
+        let stateObj =
+            match transition with
+            | _ when List.isEmpty transition ->
                 (* If a state has no transitions, then it must be a terminal state, we add `finish` here. *)
                 let endMethod = "member __.finish() : End = End()"
                 { stateObj with methods = endMethod :: stateObj.methods }
-            else List.fold addSingleTransition stateObj transition
-        Map.add stateName stateObj content
+            | _ when hasExternalChoice ->
+                let branchMethod = sprintf "member __.branch() : Choice%d = failwith \"TODO\"" state
+                { stateObj with methods = branchMethod :: stateObj.methods }
+            | _ ->
+                List.fold addSingleTransition stateObj transition
+        let content = Map.add stateName (Object stateObj) content
+        if not hasExternalChoice
+            then content
+            else generateChoices content state transition
 
     let generateCode (cfsm : CFSM) protocol localRole =
         use fileWriter = new StreamWriter(!fileName)
