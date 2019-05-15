@@ -53,10 +53,10 @@ module CodeGen =
 
     let writeObject (writer: IndentedTextWriter) isFirst (name, (obj: Object))  =
         if isFirst then
-            writeln writer (sprintf "type %s = class" name)
+            writeln writer (sprintf "type %s() = class" name)
             indent writer
         else
-            writeln writer (sprintf "and %s = class" name)
+            writeln writer (sprintf "and %s() = class" name)
         List.iter (writeln writer) obj.members
         List.iter (writeln writer) obj.methods
         writeln writer "end"
@@ -108,7 +108,13 @@ module CodeGen =
     let addTransition (content: Content) state transition =
         let stateName = mkStateName state
         let stateObj = Map.find stateName content
-        let stateObj = List.fold addSingleTransition stateObj transition
+        let stateObj =
+            if List.isEmpty transition
+            then
+                (* If a state has no transitions, then it must be a terminal state, we add `finish` here. *)
+                let endMethod = "member __.finish() : End = End()"
+                { stateObj with methods = endMethod :: stateObj.methods }
+            else List.fold addSingleTransition stateObj transition
         Map.add stateName stateObj content
 
     let generateCode (cfsm : CFSM) protocol localRole =
@@ -122,7 +128,8 @@ module CodeGen =
         Set.iter (writeRole writer) roles
         let content : Content = List.map (fun state -> mkStateName state, newObject) states |> Map.ofList
         let content = Map.fold addTransition content transitions
-        writeln writer (sprintf "type %sInit = %s" protocol (mkStateName init))
+        let content = Map.add "End" newObject content (* The `End` object marks the end of communication *)
         writeContents writer content
+        writeln writer (sprintf "let init = %s" (mkStateName init))
         writer.Flush()
         ()
