@@ -88,8 +88,11 @@ module CodeGen =
             | None -> ty
         sprintf "%s : %s" var ty
 
-    let convertPayload payloads =
-        List.filter (fst >> isDummy >> not) payloads |> List.map convertSinglePayload |> Seq.ofList |> String.concat ", "
+    let convertPayload action payloads =
+        match action with
+        | Receive -> convertSinglePayload (List.head payloads)
+        | Send -> List.filter (fst >> isDummy >> not) payloads |> List.map convertSinglePayload |> Seq.ofList |> String.concat ", "
+        | _ -> failwith "TODO"
 
     let addSingleTransition (object: Object) (transition: Transition) =
         let toState = transition.toState
@@ -98,7 +101,7 @@ module CodeGen =
         let label = transition.label
         let payload = transition.payload
         let methodName = sprintf "%s%s" (convertAction action) label
-        let methodArgs = convertPayload ((partner, partner) :: payload)
+        let methodArgs = convertPayload action ((partner, partner) :: payload)
         let method = sprintf "member __.%s(%s) : %s = failwith \"TODO\"" methodName methodArgs (mkStateName toState)
         { object with methods = method :: object.methods}
 
