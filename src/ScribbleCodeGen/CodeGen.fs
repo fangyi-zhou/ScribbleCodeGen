@@ -1,6 +1,4 @@
 namespace ScribbleCodeGen
-open System.IO
-open System.CodeDom.Compiler
 
 module CodeGen =
 
@@ -42,55 +40,6 @@ module CodeGen =
     let allStates : CFSM -> State list = snd >> Map.toList >> List.map (fst >> int)
 
     let isDummy (x : string) = x.StartsWith("_")
-
-    let moduleName = ref "ScribbleGenerated"
-    let fileName = ref "ScribbleGenerated.fs"
-
-    let indent (writer: IndentedTextWriter) =
-        writer.Indent <- writer.Indent + 1
-
-    let unindent (writer: IndentedTextWriter) =
-        writer.Indent <- writer.Indent - 1
-
-    let writeln (writer: IndentedTextWriter) (str: string) =
-        writer.Write(str)
-        writer.WriteLine()
-
-    let writeObject (writer: IndentedTextWriter) isFirst name obj =
-        if isFirst then
-            writeln writer (sprintf "type %s() = class" name)
-        else
-            writeln writer (sprintf "and %s() = class" name)
-        indent writer
-        List.iter (writeln writer) obj.members
-        List.iter (writeln writer) obj.methods
-        writeln writer "end"
-        unindent writer
-
-    let writeUnion (writer: IndentedTextWriter) isFirst name union =
-        if isFirst then
-            writeln writer (sprintf "type %s =" name)
-        else
-            writeln writer (sprintf "and %s =" name)
-        indent writer
-        List.iter (fun unioncase -> writeln writer (sprintf "| %s" unioncase)) union
-        unindent writer
-
-    let writeTypeDef (writer: IndentedTextWriter) isFirst (name, typeDef) =
-        match typeDef with
-        | Union u -> writeUnion writer isFirst name u
-        | Object o -> writeObject writer isFirst name o
-
-    let writeContents (writer: IndentedTextWriter) (content: Content) =
-        let content = Map.toList content
-        match content with
-            | [] -> ()
-            | first :: rest ->
-                writeTypeDef writer true first
-                List.iter (writeTypeDef writer false) rest
-
-    let writeRole (writer: IndentedTextWriter) (role: Role) =
-        writeln writer (sprintf "type %s = %s" role role)
 
     let convertAction action =
         match action with
@@ -158,19 +107,16 @@ module CodeGen =
             then content
             else generateChoices content state transition
 
-    let generateCode (cfsm : CFSM) protocol localRole =
-        use fileWriter = new StreamWriter(!fileName)
-        use writer = new IndentedTextWriter(fileWriter)
-        writeln writer (sprintf "module %s%s%s" !moduleName  protocol localRole)
-        writeln writer ("(* This file is GENERATED, do not modify manually *)")
-        let init, transitions = cfsm
+    let addRole content role =
+        let roleUnion = Union [role]
+        Map.add role roleUnion content
+
+    let generateCodeContent (cfsm : CFSM) protocol localRole =
+        let _, transitions = cfsm
         let states = allStates cfsm
         let roles = allRoles cfsm
-        Set.iter (writeRole writer) roles
         let content : Content = List.map (fun state -> mkStateName state, newObject) states |> Map.ofList
+        let content = Set.fold addRole content roles
         let content = Map.fold addTransition content transitions
         let content = Map.add "End" newObject content (* The `End` object marks the end of communication *)
-        writeContents writer content
-        writeln writer (sprintf "let init = %s" (mkStateName init))
-        writer.Flush()
-        ()
+        content

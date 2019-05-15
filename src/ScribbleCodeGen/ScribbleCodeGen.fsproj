@@ -11,6 +11,7 @@
     <Compile Include="Parsing.fs" />
     <Compile Include="CFSMConversion.fs" />
     <Compile Include="CodeGen.fs "/>
+    <Compile Include="CodePrinter.fs "/>
     <Compile Include="Library.fs" />
     <None Include="paket.references" />
     <None Include="paket.template" />
