@@ -40,11 +40,16 @@ module CodePrinter =
         unindent writer
 
     let writeRecord (writer: IndentedTextWriter) isFirst name record =
-        writeTypeDefPreamble writer isFirst name " = {"
-        indent writer
-        List.iter (fun (field, fieldType) -> writeln writer (sprintf "%s : %s" field fieldType)) record
-        writeln writer "}"
-        unindent writer
+        if List.isEmpty record
+        then
+            (* F# doesn't allow empty record *)
+            writeTypeDefPreamble writer isFirst name " = unit"
+        else
+            writeTypeDefPreamble writer isFirst name " = {"
+            indent writer
+            List.iter (fun (field, fieldType) -> writeln writer (sprintf "%s : %s" field fieldType)) record
+            writeln writer "}"
+            unindent writer
 
     let writeTypeDef (writer: IndentedTextWriter) isFirst (name, typeDef) =
         match typeDef with

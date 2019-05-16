@@ -25,3 +25,5 @@ type Transition = {
 
 type TransitionMap = Map<State, Transition list>
 type CFSM = State * TransitionMap
+
+type StateVariableMap = Map<State, (Variable * VarType) list>

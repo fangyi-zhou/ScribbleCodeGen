@@ -163,11 +163,23 @@ module CodeGen =
     let addTransitionCallback callbacks _ transition =
         List.fold addSingleTransitionCallback callbacks transition
 
+    let addStateRecords stateVarMap content =
+        Map.fold (fun content state varDef -> Map.add (mkStateName state) (Record varDef) content) content stateVarMap
+
+    let cleanUpVarMap stateVarMap =
+        let cleanUpSingle _ =
+            List.filter (fst >> isDummy >> not)
+        Map.map cleanUpSingle stateVarMap
+
     let generateCodeContentEventStyleApi cfsm =
         let _, transitions = cfsm
         let states = allStates cfsm
         let roles = allRoles cfsm
-        let content : Content = List.map (fun state -> mkStateName state, newObject) states |> Map.ofList
+        let stateVarMap = CFSMAnalysis.constructVariableMap cfsm
+        let stateVarMap = cleanUpVarMap stateVarMap
+        let content = Map.empty
+        assert (List.length states = Map.count stateVarMap)
+        let content = addStateRecords stateVarMap content
         let content = Set.fold addRole content roles
         let callbacks = Map.fold addTransitionCallback [] transitions |> List.rev
         let content = Map.add "Callbacks" (Record callbacks) content

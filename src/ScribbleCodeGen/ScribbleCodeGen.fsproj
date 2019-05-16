@@ -10,6 +10,7 @@
     <Compile Include="Types.fs" />
     <Compile Include="Parsing.fs" />
     <Compile Include="CFSMConversion.fs" />
+    <Compile Include="CFSMAnalysis.fs" />
     <Compile Include="CodeGen.fs "/>
     <Compile Include="CodePrinter.fs "/>
     <Compile Include="Library.fs" />
