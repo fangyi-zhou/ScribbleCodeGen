@@ -10,6 +10,7 @@ type CliArgument =
     | [<Mandatory>] Protocol of string
     | [<Mandatory>] Role of string
     | Event_Api
+    | [<AltCommandLine("-o")>] Output of string
     interface IArgParserTemplate with
         member this.Usage =
             match this with
@@ -17,6 +18,7 @@ type CliArgument =
             | Protocol _ -> "Name of Scribble Protocol"
             | Role _ -> "Name of Local Role in the Protocol"
             | Event_Api -> "Use Event Style API"
+            | Output _ -> "Path to Output Filename"
 
 let fixQuotes stuff =
     (* DotParser has issues parsing escaped quotes, we replace them with single quotes *)
@@ -32,6 +34,10 @@ let main argv =
     let protocol = results.GetResult Protocol
     let localRole = results.GetResult Role
     let eventStyleApi = results.Contains Event_Api
+    if results.Contains Output
+    then
+        let outputFileName = results.GetResult Output
+        CodePrinter.fileName := outputFileName
     let content = File.ReadAllText(filename)
     let content = fixQuotes content
     Library.processScribbleOutput content protocol localRole eventStyleApi
