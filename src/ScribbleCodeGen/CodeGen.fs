@@ -5,15 +5,20 @@ module CodeGen =
     type Method = string
     type Member = string
     type UnionCase = string
+    type Field = string
+    type FieldType = string
 
     type Object = {
         methods : Method list
         members : Member list
     }
 
+    type RecordItem = Field * FieldType
+
     type TypeDef =
         | Object of Object
         | Union of UnionCase list
+        | Record of RecordItem list
 
     type Content = Map<string, TypeDef>
 
@@ -121,8 +126,52 @@ module CodeGen =
         let content = Map.add "End" newObject content (* The `End` object marks the end of communication *)
         content
 
+    let productOfPayload payload =
+        if List.isEmpty payload
+        then "unit"
+        else
+            let getType (_, tyName) =
+                match Map.tryFind tyName defaultTypeAliasMap with
+                | Some ty -> ty
+                | None -> tyName
+            List.map getType payload |> Seq.ofList |> String.concat " * "
+
+    let getCallbackType transition =
+        let state = mkStateName transition.fromState
+        let action = transition.action
+        let payload = transition.payload |> List.filter (fst >> isDummy >> not)
+        let argType =
+            match action with
+            | Send -> state
+            | Receive -> productOfPayload (("state", state) :: payload)
+            | _ -> failwith "TODO"
+        let retType =
+            match action with
+            | Send -> productOfPayload payload
+            | Receive -> "unit"
+            | _ -> failwith "TODO"
+        sprintf "%s -> %s" argType retType
+
+    let addSingleTransitionCallback callbacks transition =
+        let action = convertAction transition.action
+        let fromState = transition.fromState
+        let label = transition.label
+        let field = sprintf "state%dOn%s%s" fromState action label
+        let fieldType = getCallbackType transition
+        (field, fieldType) :: callbacks
+
+    let addTransitionCallback callbacks _ transition =
+        List.fold addSingleTransitionCallback callbacks transition
+
     let generateCodeContentEventStyleApi cfsm =
-        failwith "TODO"
+        let _, transitions = cfsm
+        let states = allStates cfsm
+        let roles = allRoles cfsm
+        let content : Content = List.map (fun state -> mkStateName state, newObject) states |> Map.ofList
+        let content = Set.fold addRole content roles
+        let callbacks = Map.fold addTransitionCallback [] transitions |> List.rev
+        let content = Map.add "Callbacks" (Record callbacks) content
+        content
 
     let generateCodeContent (cfsm : CFSM) eventStyleApi =
         if eventStyleApi

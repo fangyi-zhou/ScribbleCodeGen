@@ -20,11 +20,13 @@ module CodePrinter =
         writer.Write(str)
         writer.WriteLine()
 
+    let writeTypeDefPreamble (writer: IndentedTextWriter) isFirst name content =
+        let preamble =
+            if isFirst then "type" else "and"
+        writeln writer (sprintf "%s %s%s" preamble name content)
+
     let writeObject (writer: IndentedTextWriter) isFirst name obj =
-        if isFirst then
-            writeln writer (sprintf "type %s() = class" name)
-        else
-            writeln writer (sprintf "and %s() = class" name)
+        writeTypeDefPreamble writer isFirst name "() = class"
         indent writer
         List.iter (writeln writer) obj.members
         List.iter (writeln writer) obj.methods
@@ -32,18 +34,23 @@ module CodePrinter =
         unindent writer
 
     let writeUnion (writer: IndentedTextWriter) isFirst name union =
-        if isFirst then
-            writeln writer (sprintf "type %s =" name)
-        else
-            writeln writer (sprintf "and %s =" name)
+        writeTypeDefPreamble writer isFirst name " ="
         indent writer
         List.iter (fun unioncase -> writeln writer (sprintf "| %s" unioncase)) union
+        unindent writer
+
+    let writeRecord (writer: IndentedTextWriter) isFirst name record =
+        writeTypeDefPreamble writer isFirst name " = {"
+        indent writer
+        List.iter (fun (field, fieldType) -> writeln writer (sprintf "%s : %s" field fieldType)) record
+        writeln writer "}"
         unindent writer
 
     let writeTypeDef (writer: IndentedTextWriter) isFirst (name, typeDef) =
         match typeDef with
         | Union u -> writeUnion writer isFirst name u
         | Object o -> writeObject writer isFirst name o
+        | Record r -> writeRecord writer isFirst name r
 
     let writeContents (writer: IndentedTextWriter) (content: Content) =
         let content = Map.toList content
@@ -59,10 +66,10 @@ module CodePrinter =
         writeln writer (sprintf "module %s%s%s" !moduleName  protocol localRole)
         writeln writer ("(* This file is GENERATED, do not modify manually *)")
         let content = generateCodeContent cfsm eventStyleApi
+        writeContents writer content
         if not eventStyleApi
         then
             let init, _ = cfsm
-            writeContents writer content
             writeln writer (sprintf "let init = %s" (mkStateName init))
         else
             ()
