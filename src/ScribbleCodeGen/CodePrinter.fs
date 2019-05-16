@@ -72,6 +72,6 @@ module CodePrinter =
             let init, _ = cfsm
             writeln writer (sprintf "let init = %s" (mkStateName init))
         else
-            ()
+            writeln writer "let run (callbacks : Callbacks) = failwith \"TODO\""
         writer.Flush()
         ()
