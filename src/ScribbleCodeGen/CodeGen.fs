@@ -1,5 +1,7 @@
 namespace ScribbleCodeGen
 
+open FluidTypes.Refinements
+
 module CodeGen =
 
     type Method = string
@@ -7,13 +9,14 @@ module CodeGen =
     type UnionCase = string
     type Field = string
     type FieldType = string
+    type Refinement = string
 
     type Object = {
         methods : Method list
         members : Member list
     }
 
-    type RecordItem = Field * FieldType
+    type RecordItem = Field * FieldType * Refinement option
 
     type TypeDef =
         | Object of Object
@@ -158,7 +161,7 @@ module CodeGen =
         let label = transition.label
         let field = sprintf "state%dOn%s%s" fromState action label
         let fieldType = getCallbackType transition
-        (field, fieldType) :: callbacks
+        (field, fieldType, None) :: callbacks (* TODO: Add refinement type *)
 
     let addTransitionCallback callbacks _ transition =
         List.fold addSingleTransitionCallback callbacks transition
@@ -168,7 +171,7 @@ module CodeGen =
 
     let cleanUpVarMap stateVarMap =
         let cleanUpSingle _ =
-            List.filter (fst >> isDummy >> not)
+            List.filter (fun (name, _, _) -> not (isDummy name))
         Map.map cleanUpSingle stateVarMap
 
     let generateCodeContentEventStyleApi cfsm =

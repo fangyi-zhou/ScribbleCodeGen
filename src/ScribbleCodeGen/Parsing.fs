@@ -72,7 +72,7 @@ module Parsing =
             | _ -> Send, str
         | _ -> failwith "invalid action"
 
-    let parseAssertion str : Assertion * char seq =
+    let parseAssertionString str : string * char seq =
         (* dollar is used to wrap the assertion instead of quotes due to DotParser issue *)
         match Seq.tryHead str with
         | Some '@' ->
@@ -92,12 +92,12 @@ module Parsing =
             (* No assertion *)
             "", str
 
-    let parseDotLabel (str: string) : Role * Action * Label * Payload * Assertion =
+    let parseDotLabel (str: string) : Role * Action * Label * Payload * string =
         let str = str.ToCharArray() |> Seq.ofArray
         let partner, str = parseRole str
         let action, str = parseAction str
         let label, str = parseLabel str
         let payload, str = parsePayload str
-        let assertion, str = parseAssertion str
+        let assertion, str = parseAssertionString str
         if not (Seq.isEmpty str) then eprintfn "Unexpected %s" (seqToString str)
         partner, action, label, payload, assertion

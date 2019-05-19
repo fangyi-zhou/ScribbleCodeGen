@@ -1,9 +1,11 @@
 namespace ScribbleCodeGen
 
+open FluidTypes.Refinements
+
 type Role = string
 type Label = string
 type State = int
-type Assertion = string
+type Assertion = Term list
 type Action =
     | Request
     | Accept
@@ -26,4 +28,5 @@ type Transition = {
 type TransitionMap = Map<State, Transition list>
 type CFSM = State * TransitionMap
 
-type StateVariableMap = Map<State, (Variable * VarType) list>
+type Refinement = string
+type StateVariableMap = Map<State, (Variable * VarType * Refinement option) list>

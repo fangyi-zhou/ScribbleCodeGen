@@ -3,6 +3,7 @@ framework: auto-detect
 source https://nuget.org/api/v2
 
 nuget DotParser
+nuget FluidTypes.AnnotationParsing
 nuget FSharp.Core
 nuget Argu
 

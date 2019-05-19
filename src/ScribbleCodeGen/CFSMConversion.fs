@@ -1,8 +1,17 @@
 namespace ScribbleCodeGen
 
+open FluidTypes.Refinements
+open FluidTypes.Annotations.AnnotationParser
+
 module CFSMConversion =
 
     let newTransitionMap = Map.empty
+
+    let rec cutAssertion assertion =
+        match assertion with
+        | App (App (Const (Binop And), t1), t2) ->
+            cutAssertion t1 @ cutAssertion t2
+        | assertion -> [assertion]
 
     let addTransition (transitions: TransitionMap) (transition: Transition) : TransitionMap =
         let from = transition.fromState
@@ -11,7 +20,9 @@ module CFSMConversion =
         | None -> Map.add from [transition] transitions
 
     let parseTransition fromState toState label : Transition =
-        let partner, action, label, payload, assertion = Parsing.parseDotLabel label
+        let partner, action, label, payload, assertionString = Parsing.parseDotLabel label
+        let parsedAssertion = try (Some (parse_term assertionString)) with e -> None
+        let chunkedAssertions = Option.map cutAssertion parsedAssertion |> Option.defaultValue []
         {
             fromState = fromState
             toState = toState
@@ -19,7 +30,7 @@ module CFSMConversion =
             action = action
             label = label
             payload = payload
-            assertion = assertion
+            assertion = chunkedAssertions
         }
 
     let convertEdge (transitions : TransitionMap) (fromState, toState) attributes =

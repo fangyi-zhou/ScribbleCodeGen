@@ -39,6 +39,13 @@ module CodePrinter =
         List.iter (fun unioncase -> writeln writer (sprintf "| %s" unioncase)) union
         unindent writer
 
+    let writeRecordItem (writer: IndentedTextWriter) (field, fieldType, refinement) =
+        let refinementAttribute =
+            match refinement with
+            | Some refinement -> sprintf "[<Refined(\"{v:%s|%s}\")>] " fieldType refinement
+            | None -> ""
+        writeln writer (sprintf "%s%s : %s" refinementAttribute field fieldType)
+
     let writeRecord (writer: IndentedTextWriter) isFirst name record =
         if List.isEmpty record
         then
@@ -47,7 +54,7 @@ module CodePrinter =
         else
             writeTypeDefPreamble writer isFirst name " = {"
             indent writer
-            List.iter (fun (field, fieldType) -> writeln writer (sprintf "%s : %s" field fieldType)) record
+            List.iter (writeRecordItem writer) record
             writeln writer "}"
             unindent writer
 
@@ -70,6 +77,7 @@ module CodePrinter =
         use writer = new IndentedTextWriter(fileWriter)
         writeln writer (sprintf "module %s%s%s" !moduleName  protocol localRole)
         writeln writer ("(* This file is GENERATED, do not modify manually *)")
+        writeln writer ("open FluidTypes.Annotations")
         let content = generateCodeContent cfsm eventStyleApi
         writeContents writer content
         if not eventStyleApi
@@ -77,6 +85,7 @@ module CodePrinter =
             let init, _ = cfsm
             writeln writer (sprintf "let init = %s" (mkStateName init))
         else
-            writeln writer "let run (callbacks : Callbacks) = failwith \"TODO\""
+            (* TODO *)
+            writeln writer "let run (callbacks : Callbacks) = ()"
         writer.Flush()
         ()
