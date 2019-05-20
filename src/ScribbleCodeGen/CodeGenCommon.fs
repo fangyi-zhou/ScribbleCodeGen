@@ -68,6 +68,16 @@ module CodeGenCommon =
                 | None -> tyName
             List.map getType payload |> Seq.ofList |> String.concat " * "
 
+    let curriedPayload payload =
+        if List.isEmpty payload
+        then "unit"
+        else
+            let getType (_, tyName) =
+                match Map.tryFind tyName defaultTypeAliasMap with
+                | Some ty -> ty
+                | None -> tyName
+            List.map getType payload |> Seq.ofList |> String.concat " -> "
+
     let cleanUpVarMap stateVarMap =
         let cleanUpSingle _ =
             List.filter (fun (name, _, _) -> not (isDummy name))

@@ -11,7 +11,7 @@ module CodeGenEventStyle =
         let argType =
             match action with
             | Send -> state
-            | Receive -> productOfPayload (("state", state) :: payload)
+            | Receive -> curriedPayload (("state", state) :: payload)
             | _ -> failwith "TODO"
         let retType =
             match action with
