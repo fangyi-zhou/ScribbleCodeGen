@@ -30,12 +30,23 @@ module CFSMAnalysis =
         | Negate -> "-"
         | Not -> "not"
 
-    let makeRefinementAttribute terms =
+    let makeRefinementAttribute ty terms =
         match terms with
         | [] -> None
         | terms ->
             let terms = List.map termToString terms |> Seq.ofList
-            Some (String.concat " && " terms)
+            let refinement = String.concat " && " terms
+            Some (sprintf "{v:%s|%s}" ty refinement)
+
+    let attachRefinements refinements varMap payloads =
+        let addVariableWithRefinements (refinements, knownVars) (var, ty) =
+            let boundVars = Set.add var (Set.ofList (List.map (fun (v, _, _) -> v) knownVars))
+            let isRefinementClosed term = Set.isSubset (FreeVar.free_var_term term) boundVars
+            let closed, notClosed = List.partition isRefinementClosed refinements
+            let closed = List.map (fun t -> Substitution.substitute_term t var (Var "v")) closed
+            let newPayloadItem = var, ty, makeRefinementAttribute ty closed
+            newPayloadItem, (notClosed, (newPayloadItem :: knownVars))
+        List.mapFold (addVariableWithRefinements) (refinements, varMap) payloads
 
     let constructVariableMap (cfsm : CFSM) : StateVariableMap =
         let init, allTransitions = cfsm
@@ -50,12 +61,6 @@ module CFSMAnalysis =
                     let fromStateVars = Map.find fromState varMap
                     let payloads = transition.payload
                     let refinements = transition.assertion
-                    let addVariableWithRefinements (refinements, knownVars) (var, ty) =
-                        let boundVars = Set.add var (Set.ofList (List.map (fun (v, _, _) -> v) knownVars))
-                        let isRefinementClosed term = Set.isSubset (FreeVar.free_var_term term) boundVars
-                        let closed, notClosed = List.partition isRefinementClosed refinements
-                        let closed = List.map (fun t -> Substitution.substitute_term t var (Var special_this)) closed
-                        notClosed, ((var, ty, makeRefinementAttribute closed) :: knownVars)
-                    List.fold (addVariableWithRefinements) (refinements, fromStateVars) payloads |> snd
+                    attachRefinements refinements fromStateVars payloads |> snd |> snd
                 List.fold (fun varMap transition -> aux varMap transition.toState (addVariablesFromTransition transition)) varMap transitions
         aux Map.empty init []

@@ -43,7 +43,7 @@ module CodePrinter =
     let writeRecordItem (writer: IndentedTextWriter) (field, fieldType, refinement) =
         let refinementAttribute =
             match refinement with
-            | Some refinement -> sprintf "[<Refined(\"{v:%s|%s}\")>] " fieldType refinement
+            | Some refinement -> sprintf "[<Refined(\"%s\")>] " refinement
             | None -> ""
         writeln writer (sprintf "%s%s : %s" refinementAttribute field fieldType)
 

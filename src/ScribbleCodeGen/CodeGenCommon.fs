@@ -68,6 +68,16 @@ module CodeGenCommon =
                 | None -> tyName
             List.map getType payload |> Seq.ofList |> String.concat " * "
 
+    let productOfRefinedPayload payload =
+        if List.isEmpty payload
+        then "{v:unit|true}"
+        else
+            let getType (_, tyName, refinement) =
+                match refinement with
+                | Some r -> r
+                | None -> tyName
+            List.map getType payload |> Seq.ofList |> String.concat " * "
+
     let curriedPayload payload =
         if List.isEmpty payload
         then "unit"
@@ -76,6 +86,18 @@ module CodeGenCommon =
                 match Map.tryFind tyName defaultTypeAliasMap with
                 | Some ty -> ty
                 | None -> tyName
+            List.map getType payload |> Seq.ofList |> String.concat " -> "
+
+    let curriedPayloadRefined payload =
+        if List.isEmpty payload
+        then "unit"
+        else
+            let getType (var, tyName, refinement) =
+                let refinement =
+                    match refinement with
+                    | Some r -> r
+                    | None -> tyName
+                sprintf "(%s : %s)" var refinement
             List.map getType payload |> Seq.ofList |> String.concat " -> "
 
     let cleanUpVarMap stateVarMap =
