@@ -3,6 +3,7 @@ namespace ScribbleCodeGen
 open System.IO
 open System.CodeDom.Compiler
 
+open CodeGenCommon
 open CodeGen
 
 module CodePrinter =
