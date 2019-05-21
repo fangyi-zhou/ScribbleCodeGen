@@ -70,7 +70,7 @@ module CodeGenCommon =
 
     let productOfRefinedPayload payload =
         if List.isEmpty payload
-        then "{v:unit|true}"
+        then "unit"
         else
             let getType (_, tyName, refinement) =
                 match refinement with
