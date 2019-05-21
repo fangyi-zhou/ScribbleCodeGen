@@ -30,21 +30,20 @@ module CFSMAnalysis =
         | Negate -> "-"
         | Not -> "not"
 
-    let makeRefinementAttribute ty terms =
+    let makeRefinementAttribute var ty terms =
         match terms with
         | [] -> None
         | terms ->
             let terms = List.map termToString terms |> Seq.ofList
             let refinement = String.concat " && " terms
-            Some (sprintf "{v:%s|%s}" ty refinement)
+            Some (sprintf "{%s:%s|%s}" var ty refinement)
 
     let attachRefinements refinements varMap payloads =
         let addVariableWithRefinements (refinements, knownVars) (var, ty) =
             let boundVars = Set.add var (Set.ofList (List.map (fun (v, _, _) -> v) knownVars))
             let isRefinementClosed term = Set.isSubset (FreeVar.free_var_term term) boundVars
             let closed, notClosed = List.partition isRefinementClosed refinements
-            let closed = List.map (fun t -> Substitution.substitute_term t var (Var "v")) closed
-            let newPayloadItem = var, ty, makeRefinementAttribute ty closed
+            let newPayloadItem = var, ty, makeRefinementAttribute var ty closed
             newPayloadItem, (notClosed, (newPayloadItem :: knownVars))
         List.mapFold (addVariableWithRefinements) (refinements, varMap) payloads
 
