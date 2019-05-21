@@ -66,4 +66,4 @@ module CodeGenVanilla =
         let content = Set.fold addRole content roles
         let content = Map.fold addTransition content transitions
         let content = Map.add "End" newObject content (* The `End` object marks the end of communication *)
-        content
+        [content]

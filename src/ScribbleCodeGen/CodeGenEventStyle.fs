@@ -65,5 +65,5 @@ module CodeGenEventStyle =
         let content = addStateRecords stateVarMap content
         let content = Set.fold addRole content roles
         let callbacks = Map.fold (addTransitionCallback stateVarMap) [] transitions |> List.rev
-        let content = Map.add "Callbacks" (Record callbacks) content
-        content
+        let callbacks = Map.ofList ["Callbacks", (Record callbacks)]
+        [content; callbacks]

@@ -80,7 +80,7 @@ module CodePrinter =
         writeln writer ("(* This file is GENERATED, do not modify manually *)")
         writeln writer ("open FluidTypes.Annotations")
         let content = generateCodeContent cfsm eventStyleApi
-        writeContents writer content
+        List.iter (writeContents writer) content
         if not eventStyleApi
         then
             let init, _ = cfsm
