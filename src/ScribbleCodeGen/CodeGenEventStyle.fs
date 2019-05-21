@@ -1,5 +1,6 @@
 namespace ScribbleCodeGen
 
+open FluidTypes.Refinements
 open CodeGenCommon
 
 module CodeGenEventStyle =
@@ -24,7 +25,8 @@ module CodeGenEventStyle =
         let state = mkStateName transition.fromState
         let action = transition.action
         let payload = transition.payload |> List.filter (fst >> isDummy >> not)
-        let payload = CFSMAnalysis.attachRefinements transition.assertion varMap payload |> fst
+        let binder (v: Variable) = FieldGet (Var "state", v)
+        let payload, _ = CFSMAnalysis.attachRefinements transition.assertion varMap payload (Some binder)
         let argType =
             match action with
             | Send -> sprintf "(state : %s)" state

@@ -12,6 +12,7 @@ module CFSMAnalysis =
         | Const (BoolLiteral b) -> if b then "(true)" else "(false)"
         | App (App (Const (Binop b), t1), t2) -> sprintf "(%s %s %s)" (termToString t1) (binopToString b) (termToString t2)
         | App (Const (Unop u), t1) -> sprintf "(%s %s)" (unopToString u) (termToString t1)
+        | FieldGet (t, v) -> sprintf "(%s$%s)" (termToString t) v
         | _ -> failwith "TODO"
     and binopToString b =
         match b with
@@ -38,13 +39,24 @@ module CFSMAnalysis =
             let refinement = String.concat " && " terms
             Some (sprintf "{%s:%s|%s}" var ty refinement)
 
-    let attachRefinements refinements varMap payloads =
-        let addVariableWithRefinements (refinements, knownVars) (var, ty) =
-            let boundVars = Set.add var (Set.ofList (List.map (fun (v, _, _) -> v) knownVars))
+    let bindVars varsToBind binder term =
+        let freeVars = FreeVar.free_var_term term
+        let varsToBind = Set.intersect (Set.ofList varsToBind) freeVars
+        Set.fold (fun term var -> Substitution.substitute_term term var (binder var)) term varsToBind
+
+    let attachRefinements refinements varMap payloads binder =
+        let addVariableWithRefinements (refinements, existingPayload) (var, ty) =
+            let varsToBind = List.map (fun (v, _, _) -> v) varMap
+            let knownVars = List.map (fun (v, _, _) -> v) existingPayload
+            let boundVars = Set.add var (Set.ofList knownVars)
             let isRefinementClosed term = Set.isSubset (FreeVar.free_var_term term) boundVars
             let closed, notClosed = List.partition isRefinementClosed refinements
+            let closed =
+                match binder with
+                | Some binder -> List.map (bindVars varsToBind binder) closed
+                | None -> closed
             let newPayloadItem = var, ty, makeRefinementAttribute var ty closed
-            newPayloadItem, (notClosed, (newPayloadItem :: knownVars))
+            newPayloadItem, (notClosed, (newPayloadItem :: existingPayload))
         List.mapFold (addVariableWithRefinements) (refinements, varMap) payloads
 
     let constructVariableMap (cfsm : CFSM) : StateVariableMap =
@@ -60,6 +72,6 @@ module CFSMAnalysis =
                     let fromStateVars = Map.find fromState varMap
                     let payloads = transition.payload
                     let refinements = transition.assertion
-                    attachRefinements refinements fromStateVars payloads |> snd |> snd
+                    attachRefinements refinements fromStateVars payloads None |> snd |> snd
                 List.fold (fun varMap transition -> aux varMap transition.toState (addVariablesFromTransition transition)) varMap transitions
         aux Map.empty init []
