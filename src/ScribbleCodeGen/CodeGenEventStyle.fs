@@ -54,7 +54,7 @@ module CodeGenEventStyle =
     let addStateRecords stateVarMap content =
         Map.fold (fun content state varDef -> Map.add (mkStateName state) (Record varDef) content) content stateVarMap
 
-    let generateCodeContentEventStyleApi cfsm =
+    let generateCodeContentEventStyleApi cfsm localRole =
         let _, transitions = cfsm
         let states = allStates cfsm
         let roles = allRoles cfsm
@@ -65,5 +65,5 @@ module CodeGenEventStyle =
         let content = addStateRecords stateVarMap content
         let content = Set.fold addRole content roles
         let callbacks = Map.fold (addTransitionCallback stateVarMap) [] transitions |> List.rev
-        let callbacks = Map.ofList ["Callbacks", (Record callbacks)]
+        let callbacks = Map.ofList ["Callbacks" + localRole, (Record callbacks)]
         [content; callbacks]

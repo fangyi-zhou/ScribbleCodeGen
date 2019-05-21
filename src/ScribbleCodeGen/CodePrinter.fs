@@ -79,7 +79,7 @@ module CodePrinter =
         writeln writer (sprintf "module %s%s%s" !moduleName  protocol localRole)
         writeln writer ("(* This file is GENERATED, do not modify manually *)")
         writeln writer ("open FluidTypes.Annotations")
-        let content = generateCodeContent cfsm eventStyleApi
+        let content = generateCodeContent cfsm eventStyleApi localRole
         List.iter (writeContents writer) content
         if not eventStyleApi
         then
@@ -87,6 +87,6 @@ module CodePrinter =
             writeln writer (sprintf "let init = %s" (mkStateName init))
         else
             (* TODO *)
-            writeln writer "let run (callbacks : Callbacks) = ()"
+            writeln writer (sprintf "let run (callbacks : Callbacks%s) = ()" localRole)
         writer.Flush()
         ()

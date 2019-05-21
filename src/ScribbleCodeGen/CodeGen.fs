@@ -4,7 +4,7 @@ open CodeGenVanilla
 open CodeGenEventStyle
 
 module CodeGen =
-    let generateCodeContent (cfsm : CFSM) eventStyleApi =
+    let generateCodeContent (cfsm : CFSM) eventStyleApi localRole =
         if eventStyleApi
-            then generateCodeContentEventStyleApi cfsm
+            then generateCodeContentEventStyleApi cfsm localRole
             else generateCodeContentVanillaApi cfsm
