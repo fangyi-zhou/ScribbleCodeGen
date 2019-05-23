@@ -4,10 +4,11 @@ module CodeGenCommon =
 
     type Method = string
     type Member = string
-    type UnionCase = string
     type Field = string
     type FieldType = string
     type Refinement = string
+    type Tag = string
+    type UnionCase = Tag * FieldType list * Refinement option
 
     type Object = {
         methods : Method list
@@ -58,6 +59,10 @@ module CodeGenCommon =
         let receiveCount = List.filter (fun t -> t.action = Receive) >> List.length
         receiveCount transitions > 1
 
+    let stateHasInternalChoice transitions =
+        let receiveCount = List.filter (fun t -> t.action = Send) >> List.length
+        receiveCount transitions > 1
+
     let productOfPayload payload =
         if List.isEmpty payload
         then "unit"
@@ -106,5 +111,5 @@ module CodeGenCommon =
         Map.map cleanUpSingle stateVarMap
 
     let addRole content role =
-        let roleUnion = Union [role]
+        let roleUnion = Union [role, [], None]
         Map.add role roleUnion content

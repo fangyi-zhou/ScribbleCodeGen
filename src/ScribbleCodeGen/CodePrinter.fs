@@ -34,10 +34,21 @@ module CodePrinter =
         writeln writer "end"
         unindent writer
 
+    let writeUnionCase (writer: IndentedTextWriter) (tag, fieldTypes, refinement) =
+        let refinement =
+            match refinement with
+            | Some r -> sprintf "[<Refined(\"%s\")>] " r
+            | None -> ""
+        let fields =
+            match fieldTypes with
+            | [] -> ""
+            | fields -> sprintf " of %s" (String.concat " * " (Seq.ofList fields))
+        writeln writer (sprintf "| %s%s%s" tag refinement fields)
+
     let writeUnion (writer: IndentedTextWriter) isFirst name union =
         writeTypeDefPreamble writer isFirst name " ="
         indent writer
-        List.iter (fun unioncase -> writeln writer (sprintf "| %s" unioncase)) union
+        List.iter (writeUnionCase writer) union
         unindent writer
 
     let writeRecordItem (writer: IndentedTextWriter) (field, fieldType, refinement) =

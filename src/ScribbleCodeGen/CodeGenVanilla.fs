@@ -29,8 +29,9 @@ module CodeGenVanilla =
 
     let generateChoices (content: Content) state transition =
         let labels = List.distinct (List.map (fun t -> t.label, t.toState) transition)
+        (* FIXME *)
         let mkLabelUnionCaseName (label, toState) = sprintf "Choice%d%s of %s" state label (mkStateName toState)
-        let labelUnionCases = List.map mkLabelUnionCaseName labels
+        let labelUnionCases = List.map (fun label -> mkLabelUnionCaseName label, [], None) labels
         let unionName = sprintf "Choice%d" state
         Map.add unionName (Union labelUnionCases) content
 

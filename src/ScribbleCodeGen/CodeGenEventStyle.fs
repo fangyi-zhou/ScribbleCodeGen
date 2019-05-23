@@ -48,11 +48,26 @@ module CodeGenEventStyle =
         let refinement = getCallbackRefinement (Map.find fromState stateVarMap) transition
         (field, fieldType, Some refinement) :: callbacks (* TODO: Add refinement type *)
 
-    let addTransitionCallback stateVarMap callbacks _ transition =
+    let addTransitionCallback stateVarMap callbacks state transition =
+        let callbacks =
+            if stateHasInternalChoice transition then
+                let field = sprintf "state%d" state
+                let fieldType = sprintf "State%d -> State%dChoice" state state
+                (field, fieldType, None) :: callbacks
+            else callbacks
         List.fold (addSingleTransitionCallback stateVarMap) callbacks transition
 
     let addStateRecords stateVarMap content =
         Map.fold (fun content state varDef -> Map.add (mkStateName state) (Record varDef) content) content stateVarMap
+
+    let addInternalChoices content state transition =
+        if stateHasInternalChoice transition
+        then
+            let choices = List.map (fun (transition : Transition) -> sprintf "Choice%d%s" state transition.label, [], None) transition
+            let union = Union choices
+            Map.add (sprintf "State%dChoice" state) union content
+        else
+            content
 
     let generateCodeContentEventStyleApi cfsm localRole =
         let _, transitions = cfsm
@@ -64,6 +79,7 @@ module CodeGenEventStyle =
         assert (List.length states = Map.count stateVarMap)
         let content = addStateRecords stateVarMap content
         let content = Set.fold addRole content roles
+        let content = Map.fold addInternalChoices content transitions
         let callbacks = Map.fold (addTransitionCallback stateVarMap) [] transitions |> List.rev
         let callbacks = Map.ofList ["Callbacks" + localRole, (Record callbacks)]
         [content; callbacks]
