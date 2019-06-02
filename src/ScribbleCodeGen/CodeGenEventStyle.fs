@@ -63,7 +63,12 @@ module CodeGenEventStyle =
     let addInternalChoices content state transition =
         if stateHasInternalChoice transition
         then
-            let choices = List.map (fun (transition : Transition) -> sprintf "Choice%d%s" state transition.label, [], None) transition
+            let counter = ref 0
+            let makeChoiceEnumItem (transition : Transition) =
+                let enumValue = !counter
+                counter := !counter + 1
+                sprintf "%s = %d" transition.label enumValue, [], None
+            let choices = List.map makeChoiceEnumItem transition
             let union = Union choices
             Map.add (sprintf "State%dChoice" state) union content
         else
