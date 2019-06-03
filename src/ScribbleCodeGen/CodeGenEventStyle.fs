@@ -58,7 +58,22 @@ module CodeGenEventStyle =
         List.fold (addSingleTransitionCallback stateVarMap) callbacks transition
 
     let addStateRecords stateVarMap content =
-        Map.fold (fun content state varDef -> Map.add (mkStateName state) (Record varDef) content) content stateVarMap
+        let mkRecord (vars, assertions) =
+            let rec aux (vars, assertions) refinedPayload =
+                match vars with
+                | [] ->
+                    if List.isEmpty assertions
+                    then refinedPayload
+                    else failwith "Invalid CFSM"
+                | (var, ty) :: rest ->
+                    let knownVars = List.map (fun (v, _, _) -> v) refinedPayload
+                    let boundVars = Set.add var (Set.ofList knownVars)
+                    let isRefinementClosed term = Set.isSubset (FreeVar.free_var_term term) boundVars
+                    let closed, notClosed = List.partition isRefinementClosed assertions
+                    let newPayloadItem = var, ty, CFSMAnalysis.makeRefinementAttribute var ty closed
+                    aux (rest, notClosed) (newPayloadItem :: refinedPayload)
+            Record (aux (vars, assertions) [])
+        Map.fold (fun content state stateVar -> Map.add (mkStateName state) (mkRecord stateVar) content) content stateVarMap
 
     let addInternalChoices content state transition =
         if stateHasInternalChoice transition

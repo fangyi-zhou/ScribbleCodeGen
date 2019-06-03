@@ -44,9 +44,9 @@ module CFSMAnalysis =
         let varsToBind = Set.intersect (Set.ofList varsToBind) freeVars
         Set.fold (fun term var -> Substitution.substitute_term term var (binder var)) term varsToBind
 
-    let attachRefinements refinements varMap payloads binder =
+    let attachRefinements refinements (vars, _) payloads binder =
         let addVariableWithRefinements (refinements, existingPayload) (var, ty) =
-            let varsToBind = List.map (fun (v, _, _) -> v) varMap
+            let varsToBind = List.map fst vars
             let knownVars = List.map (fun (v, _, _) -> v) existingPayload
             let boundVars = Set.add var (Set.ofList knownVars)
             let isRefinementClosed term = Set.isSubset (FreeVar.free_var_term term) boundVars
@@ -57,21 +57,19 @@ module CFSMAnalysis =
                 | None -> closed
             let newPayloadItem = var, ty, makeRefinementAttribute var ty closed
             newPayloadItem, (notClosed, (newPayloadItem :: existingPayload))
-        List.mapFold (addVariableWithRefinements) (refinements, varMap) payloads
+        List.mapFold addVariableWithRefinements (refinements, List.map (fun (x, y) -> x, y, None) vars) payloads
 
     let constructVariableMap (cfsm : CFSM) : StateVariableMap =
         let init, allTransitions = cfsm
-        let rec aux (varMap : StateVariableMap) state vars =
+        let rec aux (varMap : StateVariableMap) state (vars, assertions) =
             if Map.containsKey state varMap
             then varMap
             else
-                let varMap = Map.add state vars varMap
+                let varMap = Map.add state (vars, assertions) varMap
                 let transitions = Map.find state allTransitions
-                let addVariablesFromTransition transition =
-                    let fromState = transition.fromState
-                    let fromStateVars = Map.find fromState varMap
-                    let payloads = transition.payload
-                    let refinements = transition.assertion
-                    attachRefinements refinements fromStateVars payloads None |> snd |> snd
-                List.fold (fun varMap transition -> aux varMap transition.toState (addVariablesFromTransition transition)) varMap transitions
-        aux Map.empty init []
+                let updateWithTransition transition =
+                    let newAssertions = transition.assertion
+                    let newVars = transition.payload
+                    vars @ newVars, assertions @ newAssertions
+                List.fold (fun varMap transition -> aux varMap transition.toState (updateWithTransition transition)) varMap transitions
+        aux Map.empty init ([], [])

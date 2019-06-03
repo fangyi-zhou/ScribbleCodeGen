@@ -106,8 +106,8 @@ module CodeGenCommon =
             List.map getType payload |> Seq.ofList |> String.concat " -> "
 
     let cleanUpVarMap stateVarMap =
-        let cleanUpSingle _ =
-            List.filter (fun (name, _, _) -> not (isDummy name))
+        let cleanUpSingle _ (vars, assertions) =
+            List.filter (fun (name, _) -> not (isDummy name)) vars, assertions
         Map.map cleanUpSingle stateVarMap
 
     let addRole content role =
