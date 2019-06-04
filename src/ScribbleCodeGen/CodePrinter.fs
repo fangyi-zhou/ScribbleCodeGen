@@ -94,7 +94,7 @@ module CodePrinter =
         List.iter (writeContents writer) content
         if not eventStyleApi
         then
-            let init, _ = cfsm
+            let init, _, _ = cfsm
             writeln writer (sprintf "let init = %s" (mkStateName init))
         else
             (* TODO *)

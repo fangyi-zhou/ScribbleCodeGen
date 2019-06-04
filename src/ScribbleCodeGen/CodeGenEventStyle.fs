@@ -128,7 +128,7 @@ module CodeGenEventStyle =
             content
 
     let generateCodeContentEventStyleApi cfsm localRole =
-        let _, transitions = cfsm
+        let _, _, transitions = cfsm
         let states = allStates cfsm
         let roles = allRoles cfsm
         let stateVarMap = CFSMAnalysis.constructVariableMap cfsm

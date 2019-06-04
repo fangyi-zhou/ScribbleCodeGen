@@ -48,4 +48,5 @@ module CFSMConversion =
         let init = List.min nodes
         let initMap = List.map (fun node -> node, []) nodes |> Map.ofList
         let transitionMap = Map.fold convertEdge initMap edges
-        init, transitionMap
+        let finals = Map.filter (fun _ trans -> List.isEmpty trans) transitionMap |> Map.toList |> List.map fst
+        init, finals, transitionMap
