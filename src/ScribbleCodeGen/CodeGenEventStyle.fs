@@ -90,7 +90,7 @@ module CodeGenEventStyle =
             match vars with
             | [] ->
                 if List.isEmpty assertions
-                then refinedPayload
+                then List.rev refinedPayload
                 else failwith "Invalid CFSM"
             | (var, ty) :: rest ->
                 let knownVars = List.map (fun (v, _, _) -> v) refinedPayload
