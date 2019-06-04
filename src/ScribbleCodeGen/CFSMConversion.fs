@@ -34,12 +34,13 @@ module CFSMConversion =
         }
 
     let convertEdge (transitions : TransitionMap) (fromState, toState) attributes =
-        let attribute = List.head attributes
-        let fromState = int fromState
-        let toState = int toState
-        let label = Map.find "label" attribute
-        let transition = parseTransition fromState toState label
-        addTransition transitions transition
+        let processAttribute transitions attribute =
+            let fromState = int fromState
+            let toState = int toState
+            let label = Map.find "label" attribute
+            let transition = parseTransition fromState toState label
+            addTransition transitions transition
+        List.fold processAttribute transitions attributes
 
     let convert (graph: GraphData.GraphData) : CFSM =
         let edges = graph.Edges
