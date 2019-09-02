@@ -84,15 +84,15 @@ module CodePrinter =
                 writeTypeDef writer true first
                 List.iter (writeTypeDef writer false) rest
 
-    let generateCode (cfsm : CFSM) protocol localRole eventStyleApi =
+    let generateCode (cfsm : CFSM) protocol localRole legacyApi =
         use fileWriter = new StreamWriter(!fileName)
         use writer = new IndentedTextWriter(fileWriter)
         writeln writer (sprintf "module %s%s%s" !moduleName  protocol localRole)
         writeln writer ("(* This file is GENERATED, do not modify manually *)")
         writeln writer ("open FluidTypes.Annotations")
-        let content = generateCodeContent cfsm eventStyleApi localRole
+        let content = generateCodeContent cfsm legacyApi localRole
         List.iter (writeContents writer) content
-        if not eventStyleApi
+        if legacyApi
         then
             let init, _, _ = cfsm
             writeln writer (sprintf "let init = %s" (mkStateName init))

@@ -9,7 +9,7 @@ type CliArgument =
     | [<Mandatory>][<MainCommand>] Filename of string
     | [<Mandatory>] Protocol of string
     | [<Mandatory>] Role of string
-    | Event_Api
+    | [<AltCommandLine("--legacy")>] Legacy_Api
     | [<AltCommandLine("-o")>] Output of string
     interface IArgParserTemplate with
         member this.Usage =
@@ -17,7 +17,7 @@ type CliArgument =
             | Filename _ -> "Path to Scribble Output"
             | Protocol _ -> "Name of Scribble Protocol"
             | Role _ -> "Name of Local Role in the Protocol"
-            | Event_Api -> "Use Event Style API"
+            | Legacy_Api -> "Use Legacy (Non-Event) Style API"
             | Output _ -> "Path to Output Filename"
 
 let fixQuotes stuff =
@@ -33,12 +33,12 @@ let main argv =
     let filename = results.GetResult Filename
     let protocol = results.GetResult Protocol
     let localRole = results.GetResult Role
-    let eventStyleApi = results.Contains Event_Api
+    let legacyApi = results.Contains Legacy_Api
     if results.Contains Output
     then
         let outputFileName = results.GetResult Output
         CodePrinter.fileName := outputFileName
     let content = File.ReadAllText(filename)
     let content = fixQuotes content
-    Library.processScribbleOutput content protocol localRole eventStyleApi
+    Library.processScribbleOutput content protocol localRole legacyApi
     0
