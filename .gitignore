@@ -187,3 +187,5 @@ docsrc/tools/FSharp.Formatting.svclog
 gen/
 *.png
 
+.ionide/*
+
