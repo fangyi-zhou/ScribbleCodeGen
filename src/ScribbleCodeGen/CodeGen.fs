@@ -4,7 +4,7 @@ open CodeGenVanilla
 open CodeGenEventStyle
 
 module CodeGen =
-    let generateCodeContent (cfsm : CFSM) legacyApi localRole =
+    let generateCodeContent (cfsm : CFSM) stateVarMap legacyApi localRole =
         if legacyApi
             then generateCodeContentVanillaApi cfsm
-            else generateCodeContentEventStyleApi cfsm localRole
+            else generateCodeContentEventStyleApi cfsm stateVarMap localRole

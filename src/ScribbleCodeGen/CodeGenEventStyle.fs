@@ -127,12 +127,10 @@ module CodeGenEventStyle =
         else
             content
 
-    let generateCodeContentEventStyleApi cfsm localRole =
+    let generateCodeContentEventStyleApi cfsm stateVarMap localRole =
         let _, _, transitions = cfsm
         let states = allStates cfsm
         let roles = allRoles cfsm
-        let stateVarMap = CFSMAnalysis.constructVariableMap cfsm
-        let stateVarMap = cleanUpVarMap stateVarMap
         let content = Map.empty
         assert (List.length states = Map.count stateVarMap)
         let content = addStateRecords stateVarMap content

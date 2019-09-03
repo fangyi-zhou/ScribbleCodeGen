@@ -90,34 +90,79 @@ module CodePrinter =
         writeln writer ""
         writeln writer ("let send_int : int -> unit = failwith \"TODO\"")
         writeln writer ("let send_string : string -> unit = failwith \"TODO\"")
+        writeln writer ("let send_unit : unit -> unit = failwith \"TODO\"")
         writeln writer ("let recv_int : unit -> int = failwith \"TODO\"")
         writeln writer ("let recv_string : unit -> string = failwith \"TODO\"")
+        writeln writer ("let recv_unit : unit -> unit = failwith \"TODO\"")
         writeln writer ""
 
-    let generateRunState (writer: IndentedTextWriter) transitions isInit state =
+
+    let generateRunState (writer: IndentedTextWriter) (cfsm : CFSM) isInit state =
+        let _, finalStates, transitions = cfsm
         let functionName = sprintf "runState%d" state
         let preamble = if isInit then "let rec" else "and"
         fprintfn writer "%s %s (st: State%d) =" preamble functionName state
         indent writer
-        writeln writer "()"
+        let assembleState state var = "failwith \"TODO\""
+        if List.contains state finalStates
+        then
+            writeln writer "()"
+        else
+            let stateTransition = Map.find state transitions
+            if List.length stateTransition = 1
+            then (* Singleton *)
+                match List.head stateTransition with
+                | {action = Send; payload = p; label = l; toState = toState} ->
+                    fprintfn writer "send_string \"%s\"" l
+                    let callbackName = sprintf "state%dOnsend%s" state l
+                    if List.length p = 1
+                    then
+                        let var, ty = List.head p
+                        let ty = resolveTypeAlias ty
+                        fprintfn writer "let %s = callbacks.%s st" var callbackName
+                        fprintfn writer "send_%s %s" ty var
+                        fprintfn writer "let st = %s" (assembleState state var)
+                        fprintfn writer "runState%d st" toState
+                    else failwith "Currently only support single payload"
+                | {action = Receive; payload = p; label = l; toState = toState} ->
+                    fprintfn writer "let label = recv_string ()"
+                    fprintfn writer "assert (label = \"%s\")" l
+                    let callbackName = sprintf "state%dOnreceive%s" state l
+                    if List.length p = 1
+                    then
+                        let var, ty = List.head p
+                        let ty = resolveTypeAlias ty
+                        fprintfn writer "let %s = recv_%s ()" var ty
+                        fprintfn writer "callbacks.%s st %s" callbackName (if isDummy var then "" else var)
+                        fprintfn writer "let st = %s" (assembleState state var)
+                        fprintfn writer "runState%d st" toState
+                    else failwith "Currently only support single payload"
+                | _ -> failwith "TODO"
+            else (* Branch and Select *)
+                match List.head stateTransition with
+                | {action = Send} -> writeln writer "()"
+                | {action = Receive} -> writeln writer "()"
+                | _ -> writeln writer "TODO"
         unindent writer
         false
 
 
     let generateRuntimeCode writer (cfsm : CFSM) =
-        let initState, finalStates, transitions = cfsm
+        let initState, _, _ = cfsm
         let states = allStates cfsm
         indent writer
         printfn "%A" cfsm
-        List.fold (generateRunState writer transitions) true states |> ignore
+        List.fold (generateRunState writer cfsm) true states |> ignore
         fprintfn writer "runState%d ()" initState
         unindent writer
 
     let generateCode (cfsm : CFSM) protocol localRole legacyApi =
         use fileWriter = new StreamWriter(!fileName)
         use writer = new IndentedTextWriter(fileWriter)
+        let stateVarMap = CFSMAnalysis.constructVariableMap cfsm
+        let stateVarMap = cleanUpVarMap stateVarMap
         generatePreamble writer !moduleName protocol localRole
-        let content = generateCodeContent cfsm legacyApi localRole
+        let content = generateCodeContent cfsm stateVarMap legacyApi localRole
         List.iter (writeContents writer) content
         if legacyApi
         then

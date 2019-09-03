@@ -35,6 +35,11 @@ module CodeGenCommon =
         "_Unit", "unit";
     ]
 
+    let resolveTypeAlias tyName =
+        match Map.tryFind tyName defaultTypeAliasMap with
+        | Some ty -> ty
+        | None -> tyName
+
     let mkStateName state =
         sprintf "State%d" state
 
@@ -67,10 +72,7 @@ module CodeGenCommon =
         if List.isEmpty payload
         then "unit"
         else
-            let getType (_, tyName) =
-                match Map.tryFind tyName defaultTypeAliasMap with
-                | Some ty -> ty
-                | None -> tyName
+            let getType (_, tyName) = resolveTypeAlias tyName
             List.map getType payload |> Seq.ofList |> String.concat " * "
 
     let productOfRefinedPayload payload =
@@ -87,10 +89,7 @@ module CodeGenCommon =
         if List.isEmpty payload
         then "unit"
         else
-            let getType (_, tyName) =
-                match Map.tryFind tyName defaultTypeAliasMap with
-                | Some ty -> ty
-                | None -> tyName
+            let getType (_, tyName) = resolveTypeAlias tyName
             List.map getType payload |> Seq.ofList |> String.concat " -> "
 
     let curriedPayloadRefined payload =
