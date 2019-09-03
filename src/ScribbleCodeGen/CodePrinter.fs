@@ -23,7 +23,7 @@ module CodePrinter =
     let writeTypeDefPreamble (writer: IndentedTextWriter) isFirst name content =
         let preamble =
             if isFirst then "type" else "and"
-        writeln writer (sprintf "%s %s%s" preamble name content)
+        fprintfn writer "%s %s%s" preamble name content
 
     let writeObject (writer: IndentedTextWriter) isFirst name obj =
         writeTypeDefPreamble writer isFirst name "() = class"
@@ -42,7 +42,7 @@ module CodePrinter =
             match fieldTypes with
             | [] -> ""
             | fields -> sprintf " of %s" (String.concat " * " (Seq.ofList fields))
-        writeln writer (sprintf "| %s%s%s" tag refinement fields)
+        fprintfn writer "| %s%s%s" tag refinement fields
 
     let writeUnion (writer: IndentedTextWriter) isFirst name union =
         writeTypeDefPreamble writer isFirst name " ="
@@ -55,7 +55,7 @@ module CodePrinter =
             match refinement with
             | Some refinement -> sprintf "[<Refined(\"%s\")>] " refinement
             | None -> ""
-        writeln writer (sprintf "%s%s : %s" refinementAttribute field fieldType)
+        fprintfn writer "%s%s : %s" refinementAttribute field fieldType
 
     let writeRecord (writer: IndentedTextWriter) isFirst name record =
         if List.isEmpty record
@@ -84,7 +84,7 @@ module CodePrinter =
                 List.iter (writeTypeDef writer false) rest
 
     let generatePreamble writer moduleName protocol localRole =
-        writeln writer (sprintf "module %s%s%s" moduleName protocol localRole)
+        fprintfn writer "module %s%s%s" moduleName protocol localRole
         writeln writer ("(* This file is GENERATED, do not modify manually *)")
         writeln writer ("open FluidTypes.Annotations")
         writeln writer ""
@@ -97,7 +97,7 @@ module CodePrinter =
     let generateRunState (writer: IndentedTextWriter) transitions isInit state =
         let functionName = sprintf "runState%d" state
         let preamble = if isInit then "let rec" else "and"
-        writeln writer (sprintf "%s %s (st: State%d) =" preamble functionName state)
+        fprintfn writer "%s %s (st: State%d) =" preamble functionName state
         indent writer
         writeln writer "()"
         unindent writer
@@ -110,7 +110,7 @@ module CodePrinter =
         indent writer
         printfn "%A" cfsm
         List.fold (generateRunState writer transitions) true states |> ignore
-        writeln writer (sprintf "runState%d ()" initState)
+        fprintfn writer "runState%d ()" initState
         unindent writer
 
     let generateCode (cfsm : CFSM) protocol localRole legacyApi =
@@ -122,10 +122,10 @@ module CodePrinter =
         if legacyApi
         then
             let init, _, _ = cfsm
-            writeln writer (sprintf "let init = %s" (mkStateName init))
+            fprintfn writer "let init = %s" (mkStateName init)
         else
             (* TODO *)
-            writeln writer (sprintf "let run (callbacks : Callbacks%s) =" localRole)
+            fprintfn writer "let run (callbacks : Callbacks%s) =" localRole
             generateRuntimeCode writer cfsm
         writer.Flush()
         ()
