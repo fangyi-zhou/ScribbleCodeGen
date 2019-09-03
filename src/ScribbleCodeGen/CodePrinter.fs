@@ -7,7 +7,6 @@ open CodeGenCommon
 open CodeGen
 
 module CodePrinter =
-
     let moduleName = ref "ScribbleGenerated"
     let fileName = ref "ScribbleGenerated.fs"
 
@@ -84,12 +83,40 @@ module CodePrinter =
                 writeTypeDef writer true first
                 List.iter (writeTypeDef writer false) rest
 
+    let generatePreamble writer moduleName protocol localRole =
+        writeln writer (sprintf "module %s%s%s" moduleName protocol localRole)
+        writeln writer ("(* This file is GENERATED, do not modify manually *)")
+        writeln writer ("open FluidTypes.Annotations")
+        writeln writer ""
+        writeln writer ("let send_int : int -> unit = failwith \"TODO\"")
+        writeln writer ("let send_string : string -> unit = failwith \"TODO\"")
+        writeln writer ("let recv_int : unit -> int = failwith \"TODO\"")
+        writeln writer ("let recv_string : unit -> string = failwith \"TODO\"")
+        writeln writer ""
+
+    let generateRunState (writer: IndentedTextWriter) transitions isInit state =
+        let functionName = sprintf "runState%d" state
+        let preamble = if isInit then "let rec" else "and"
+        writeln writer (sprintf "%s %s (st: State%d) =" preamble functionName state)
+        indent writer
+        writeln writer "()"
+        unindent writer
+        false
+
+
+    let generateRuntimeCode writer (cfsm : CFSM) =
+        let initState, finalStates, transitions = cfsm
+        let states = allStates cfsm
+        indent writer
+        printfn "%A" cfsm
+        List.fold (generateRunState writer transitions) true states |> ignore
+        writeln writer (sprintf "runState%d ()" initState)
+        unindent writer
+
     let generateCode (cfsm : CFSM) protocol localRole legacyApi =
         use fileWriter = new StreamWriter(!fileName)
         use writer = new IndentedTextWriter(fileWriter)
-        writeln writer (sprintf "module %s%s%s" !moduleName  protocol localRole)
-        writeln writer ("(* This file is GENERATED, do not modify manually *)")
-        writeln writer ("open FluidTypes.Annotations")
+        generatePreamble writer !moduleName protocol localRole
         let content = generateCodeContent cfsm legacyApi localRole
         List.iter (writeContents writer) content
         if legacyApi
@@ -98,6 +125,7 @@ module CodePrinter =
             writeln writer (sprintf "let init = %s" (mkStateName init))
         else
             (* TODO *)
-            writeln writer (sprintf "let run (callbacks : Callbacks%s) = ()" localRole)
+            writeln writer (sprintf "let run (callbacks : Callbacks%s) =" localRole)
+            generateRuntimeCode writer cfsm
         writer.Flush()
         ()
