@@ -121,34 +121,28 @@ module CodePrinter =
             if List.length stateTransition = 1
             then (* Singleton *)
                 match List.head stateTransition with
-                | {action = Send; payload = p; label = l; toState = toState} ->
-                    fprintfn writer "send_string \"%s\"" l
-                    let callbackName = sprintf "state%dOnsend%s" state l
+                | {action = a; payload = p; label = l; toState = toState} ->
                     if List.length p = 1
                     then
                         let var, ty = List.head p
                         let ty = resolveTypeAlias ty
-                        fprintfn writer "let %s = callbacks.%s st" var callbackName
-                        fprintfn writer "send_%s %s" ty var
+                        match a with
+                        | Send ->
+                            fprintfn writer "send_string \"%s\"" l
+                            let callbackName = sprintf "state%dOnsend%s" state l
+                            fprintfn writer "let %s = callbacks.%s st" var callbackName
+                            fprintfn writer "send_%s %s" ty var
+                        | Receive ->
+                            fprintfn writer "let label = recv_string ()"
+                            fprintfn writer "assert (label = \"%s\")" l
+                            let callbackName = sprintf "state%dOnreceive%s" state l
+                            fprintfn writer "let %s = recv_%s ()" var ty
+                            fprintfn writer "callbacks.%s st %s" callbackName (if isDummy var then "" else var)
+                        | _ -> failwith "TODO"
                         fprintf writer "let st : State%d = " toState
                         assembleState toState var
                         fprintfn writer "runState%d st" toState
                     else failwith "Currently only support single payload"
-                | {action = Receive; payload = p; label = l; toState = toState} ->
-                    fprintfn writer "let label = recv_string ()"
-                    fprintfn writer "assert (label = \"%s\")" l
-                    let callbackName = sprintf "state%dOnreceive%s" state l
-                    if List.length p = 1
-                    then
-                        let var, ty = List.head p
-                        let ty = resolveTypeAlias ty
-                        fprintfn writer "let %s = recv_%s ()" var ty
-                        fprintfn writer "callbacks.%s st %s" callbackName (if isDummy var then "" else var)
-                        fprintf writer "let st : State%d = " toState
-                        assembleState toState var
-                        fprintfn writer "runState%d st" toState
-                    else failwith "Currently only support single payload"
-                | _ -> failwith "TODO"
             else (* Branch and Select *)
                 match List.head stateTransition with
                 | {action = Send} -> writeln writer "()"
