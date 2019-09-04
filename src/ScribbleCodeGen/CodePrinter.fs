@@ -88,13 +88,22 @@ module CodePrinter =
         writeln writer ("(* This file is GENERATED, do not modify manually *)")
         writeln writer ("open FluidTypes.Annotations")
         writeln writer ""
-        writeln writer ("let send_int : int -> unit = failwith \"TODO\"")
-        writeln writer ("let send_string : string -> unit = failwith \"TODO\"")
-        writeln writer ("let send_unit : unit -> unit = failwith \"TODO\"")
-        writeln writer ("let recv_int : unit -> int = failwith \"TODO\"")
-        writeln writer ("let recv_string : unit -> string = failwith \"TODO\"")
-        writeln writer ("let recv_unit : unit -> unit = failwith \"TODO\"")
-        writeln writer ""
+        writeln writer """type Communications = {
+    send_int : int -> unit;
+    send_string : string -> unit;
+    send_unit : unit -> unit;
+    recv_int : unit -> int;
+    recv_string : unit -> string;
+    recv_unit : unit -> unit;
+}
+"""
+        //writeln writer ("let send_int : int -> unit = failwith \"TODO\"")
+        //writeln writer ("let send_string : string -> unit = failwith \"TODO\"")
+        //writeln writer ("let send_unit : unit -> unit = failwith \"TODO\"")
+        //writeln writer ("let recv_int : unit -> int = failwith \"TODO\"")
+        //writeln writer ("let recv_string : unit -> string = failwith \"TODO\"")
+        //writeln writer ("let recv_unit : unit -> unit = failwith \"TODO\"")
+        //writeln writer ""
 
 
     let generateRunState (writer: IndentedTextWriter) (cfsm : CFSM) stateVarMap isInit state =
@@ -125,12 +134,12 @@ module CodePrinter =
                     //fprintfn writer "send_string \"%s\"" l
                     let callbackName = sprintf "state%dOnsend%s" state l
                     fprintfn writer "let %s = callbacks.%s st" var callbackName
-                    fprintfn writer "send_%s %s" ty var
+                    fprintfn writer "comms.send_%s %s" ty var
                 | Receive ->
                     //fprintfn writer "let label = recv_string ()"
                     //fprintfn writer "assert (label = \"%s\")" l
                     let callbackName = sprintf "state%dOnreceive%s" state l
-                    fprintfn writer "let %s = recv_%s ()" var ty
+                    fprintfn writer "let %s = comms.recv_%s ()" var ty
                     fprintfn writer "callbacks.%s st %s" callbackName (if isDummy var then "" else var)
                 | _ -> failwith "TODO"
                 fprintf writer "let st : State%d = " toState
@@ -153,7 +162,7 @@ module CodePrinter =
                         let label = transition.label
                         fprintfn writer "| State%dChoice.%s ->" state label
                         indent writer
-                        fprintfn writer "send_string \"%s\"" label
+                        fprintfn writer "comms.send_string \"%s\"" label
                         fprintf writer "let st : State%d_%s = " state label
                         assembleState state ""
                         generateForTransition transition
@@ -170,7 +179,7 @@ module CodePrinter =
                         indent writer
                         generateForTransition transition
                         unindent writer
-                    fprintfn writer "let label = recv_string ()"
+                    fprintfn writer "let label = comms.recv_string ()"
                     fprintfn writer "match label with"
                     indent writer
                     List.iter generateCase stateTransition
@@ -203,7 +212,7 @@ module CodePrinter =
             fprintfn writer "let init = %s" (mkStateName init)
         else
             (* TODO *)
-            fprintfn writer "let run (callbacks : Callbacks%s) =" localRole
+            fprintfn writer "let run (callbacks : Callbacks%s) (comms : Communications) =" localRole
             generateRuntimeCode writer cfsm stateVarMap
         writer.Flush()
         ()
