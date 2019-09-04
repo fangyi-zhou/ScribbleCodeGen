@@ -97,13 +97,22 @@ module CodePrinter =
         writeln writer ""
 
 
-    let generateRunState (writer: IndentedTextWriter) (cfsm : CFSM) isInit state =
+    let generateRunState (writer: IndentedTextWriter) (cfsm : CFSM) stateVarMap isInit state =
         let _, finalStates, transitions = cfsm
         let functionName = sprintf "runState%d" state
         let preamble = if isInit then "let rec" else "and"
         fprintfn writer "%s %s (st: State%d) =" preamble functionName state
         indent writer
-        let assembleState state var = "failwith \"TODO\""
+        let assembleState state var =
+            let vars = Map.find state stateVarMap |> fst |> List.map fst
+            if List.isEmpty vars
+            then fprintfn writer "()"
+            else
+                fprintfn writer "{"
+                indent writer
+                List.iter (fun v -> fprintfn writer "%s = %s;" v (if v = var then v else "st." + v)) vars
+                unindent writer
+                fprintfn writer "}"
         if List.contains state finalStates
         then
             writeln writer "()"
@@ -121,7 +130,8 @@ module CodePrinter =
                         let ty = resolveTypeAlias ty
                         fprintfn writer "let %s = callbacks.%s st" var callbackName
                         fprintfn writer "send_%s %s" ty var
-                        fprintfn writer "let st = %s" (assembleState state var)
+                        fprintf writer "let st : State%d = " toState
+                        assembleState toState var
                         fprintfn writer "runState%d st" toState
                     else failwith "Currently only support single payload"
                 | {action = Receive; payload = p; label = l; toState = toState} ->
@@ -134,7 +144,8 @@ module CodePrinter =
                         let ty = resolveTypeAlias ty
                         fprintfn writer "let %s = recv_%s ()" var ty
                         fprintfn writer "callbacks.%s st %s" callbackName (if isDummy var then "" else var)
-                        fprintfn writer "let st = %s" (assembleState state var)
+                        fprintf writer "let st : State%d = " toState
+                        assembleState toState var
                         fprintfn writer "runState%d st" toState
                     else failwith "Currently only support single payload"
                 | _ -> failwith "TODO"
@@ -147,12 +158,12 @@ module CodePrinter =
         false
 
 
-    let generateRuntimeCode writer (cfsm : CFSM) =
+    let generateRuntimeCode writer (cfsm : CFSM) stateVarMap =
         let initState, _, _ = cfsm
         let states = allStates cfsm
         indent writer
         printfn "%A" cfsm
-        List.fold (generateRunState writer cfsm) true states |> ignore
+        List.fold (generateRunState writer cfsm stateVarMap) true states |> ignore
         fprintfn writer "runState%d ()" initState
         unindent writer
 
@@ -171,6 +182,6 @@ module CodePrinter =
         else
             (* TODO *)
             fprintfn writer "let run (callbacks : Callbacks%s) =" localRole
-            generateRuntimeCode writer cfsm
+            generateRuntimeCode writer cfsm stateVarMap
         writer.Flush()
         ()
