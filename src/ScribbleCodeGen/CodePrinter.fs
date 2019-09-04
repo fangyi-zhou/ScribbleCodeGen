@@ -113,6 +113,30 @@ module CodePrinter =
                 List.iter (fun v -> fprintfn writer "%s = %s;" v (if v = var then v else "st." + v)) vars
                 unindent writer
                 fprintfn writer "}"
+        let generateForTransition t =
+            match t with
+            | {action = a; payload = p; label = l; toState = toState} ->
+            if List.length p = 1
+            then
+                let var, ty = List.head p
+                let ty = resolveTypeAlias ty
+                match a with
+                | Send ->
+                    //fprintfn writer "send_string \"%s\"" l
+                    let callbackName = sprintf "state%dOnsend%s" state l
+                    fprintfn writer "let %s = callbacks.%s st" var callbackName
+                    fprintfn writer "send_%s %s" ty var
+                | Receive ->
+                    //fprintfn writer "let label = recv_string ()"
+                    //fprintfn writer "assert (label = \"%s\")" l
+                    let callbackName = sprintf "state%dOnreceive%s" state l
+                    fprintfn writer "let %s = recv_%s ()" var ty
+                    fprintfn writer "callbacks.%s st %s" callbackName (if isDummy var then "" else var)
+                | _ -> failwith "TODO"
+                fprintf writer "let st : State%d = " toState
+                assembleState toState var
+                fprintfn writer "runState%d st" toState
+            else failwith "Currently only support single payload"
         if List.contains state finalStates
         then
             writeln writer "()"
@@ -120,33 +144,37 @@ module CodePrinter =
             let stateTransition = Map.find state transitions
             if List.length stateTransition = 1
             then (* Singleton *)
-                match List.head stateTransition with
-                | {action = a; payload = p; label = l; toState = toState} ->
-                    if List.length p = 1
-                    then
-                        let var, ty = List.head p
-                        let ty = resolveTypeAlias ty
-                        match a with
-                        | Send ->
-                            fprintfn writer "send_string \"%s\"" l
-                            let callbackName = sprintf "state%dOnsend%s" state l
-                            fprintfn writer "let %s = callbacks.%s st" var callbackName
-                            fprintfn writer "send_%s %s" ty var
-                        | Receive ->
-                            fprintfn writer "let label = recv_string ()"
-                            fprintfn writer "assert (label = \"%s\")" l
-                            let callbackName = sprintf "state%dOnreceive%s" state l
-                            fprintfn writer "let %s = recv_%s ()" var ty
-                            fprintfn writer "callbacks.%s st %s" callbackName (if isDummy var then "" else var)
-                        | _ -> failwith "TODO"
-                        fprintf writer "let st : State%d = " toState
-                        assembleState toState var
-                        fprintfn writer "runState%d st" toState
-                    else failwith "Currently only support single payload"
+                generateForTransition (List.head stateTransition)
             else (* Branch and Select *)
                 match List.head stateTransition with
-                | {action = Send} -> writeln writer "()"
-                | {action = Receive} -> writeln writer "()"
+                (* From Scribble, we know that the action of all outgoing transitions must be the same *)
+                | {action = Send} ->
+                    let generateCase transition =
+                        let label = transition.label
+                        fprintfn writer "| State%dChoice.%s ->" state label
+                        indent writer
+                        fprintfn writer "send_string \"%s\"" label
+                        fprintf writer "let st : State%d_%s = " state label
+                        assembleState state ""
+                        generateForTransition transition
+                        unindent writer
+                    fprintfn writer "let label = callbacks.state%d st" state
+                    fprintfn writer "match label with"
+                    indent writer
+                    List.iter generateCase stateTransition
+                    unindent writer
+                | {action = Receive} ->
+                    let generateCase transition =
+                        let label = transition.label
+                        fprintfn writer "| \"%s\" ->" label
+                        indent writer
+                        generateForTransition transition
+                        unindent writer
+                    fprintfn writer "let label = recv_string ()"
+                    fprintfn writer "match label with"
+                    indent writer
+                    List.iter generateCase stateTransition
+                    unindent writer
                 | _ -> writeln writer "TODO"
         unindent writer
         false
