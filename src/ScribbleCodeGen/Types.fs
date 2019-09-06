@@ -2,6 +2,11 @@ namespace ScribbleCodeGen
 
 open FluidTypes.Refinements
 
+type CodeGenMode =
+    | LegacyApi
+    | EventApi
+    | FStar
+
 type Role = string
 type Label = string
 type State = int

@@ -198,20 +198,23 @@ module CodePrinter =
         fprintfn writer "runState%d ()" initState
         unindent writer
 
-    let generateCode (cfsm : CFSM) protocol localRole legacyApi =
+    let generateCode (cfsm : CFSM) protocol localRole codeGenMode =
         use fileWriter = new StreamWriter(!fileName)
         use writer = new IndentedTextWriter(fileWriter)
         let stateVarMap = CFSMAnalysis.constructVariableMap cfsm
         let stateVarMap = cleanUpVarMap stateVarMap
         generatePreamble writer !moduleName protocol localRole
-        let content = generateCodeContent cfsm stateVarMap legacyApi localRole
+        let content = generateCodeContent cfsm stateVarMap codeGenMode localRole
         List.iter (writeContents writer) content
-        if legacyApi
-        then
+        match codeGenMode with
+        | LegacyApi ->
             let init, _, _ = cfsm
             fprintfn writer "let init = %s" (mkStateName init)
-        else
-            (* TODO *)
+        | EventApi ->
+            fprintfn writer "let run (callbacks : Callbacks%s) (comms : Communications) =" localRole
+            generateRuntimeCode writer cfsm stateVarMap
+        | FStar ->
+            (*TODO*)
             fprintfn writer "let run (callbacks : Callbacks%s) (comms : Communications) =" localRole
             generateRuntimeCode writer cfsm stateVarMap
         writer.Flush()
