@@ -74,10 +74,11 @@ module CodeGenEventStyle =
         let refinement = getCallbackRefinement state (Map.find fromState stateVarMap) transition
         (field, fieldType, Some refinement) :: callbacks
 
-    let addTransitionCallback stateVarMap callbacks state transition =
+    let addTransitionCallback stateVarMap codeGenMode callbacks state transition =
         if stateHasInternalChoice transition then
             let field = sprintf "state%d" state
-            let fieldType = sprintf "State%d -> State%dChoice" state state
+            let s = if codeGenMode = FStar then 's' else 'S'
+            let fieldType = sprintf "%ctate%d -> %ctate%dChoice" s state s state
             let currentStateVars = Map.find state stateVarMap |> fst |> List.map fst |> Set.ofList
             let refinement = getChoiceRefinement state currentStateVars transition
             let callbacks = (field, fieldType, Some refinement) :: callbacks
@@ -112,22 +113,27 @@ module CodeGenEventStyle =
         let recordName = sprintf "State%d_%s" state transition.label
         Map.add recordName record content
 
-    let addInternalChoices stateVarMap content state transition =
+    let addInternalChoices stateVarMap codeGenMode content state transition =
         if stateHasInternalChoice transition
         then
-            let counter = ref 0
-            let makeChoiceEnumItem (transition : Transition) =
-                let enumValue = !counter
-                counter := !counter + 1
-                sprintf "%s = %d" transition.label enumValue, [], None
-            let choices = List.map makeChoiceEnumItem transition
+            let choices =
+                if codeGenMode <> FStar
+                then
+                    let counter = ref 0
+                    let makeChoiceEnumItem (transition : Transition) =
+                        let enumValue = !counter
+                        counter := !counter + 1
+                        sprintf "%s = %d" transition.label enumValue, [], None
+                    List.map makeChoiceEnumItem transition
+                else
+                    List.map (fun t -> sprintf "Choice%d%s" state t.label, [], None) transition
             let union = Union choices
             let content = Map.add (sprintf "State%dChoice" state) union content
             List.fold (addSendStatePredicate stateVarMap state) content transition
         else
             content
 
-    let generateCodeContentEventStyleApi cfsm stateVarMap localRole =
+    let generateCodeContentEventStyleApi cfsm stateVarMap localRole codeGenMode =
         let _, _, transitions = cfsm
         let states = allStates cfsm
         let roles = allRoles cfsm
@@ -135,7 +141,7 @@ module CodeGenEventStyle =
         assert (List.length states = Map.count stateVarMap)
         let content = addStateRecords stateVarMap content
         let content = addRole content roles
-        let content = Map.fold (addInternalChoices stateVarMap) content transitions
-        let callbacks = Map.fold (addTransitionCallback stateVarMap) [] transitions |> List.rev
+        let content = Map.fold (addInternalChoices stateVarMap codeGenMode) content transitions
+        let callbacks = Map.fold (addTransitionCallback stateVarMap codeGenMode) [] transitions |> List.rev
         let callbacks = Map.ofList ["Callbacks" + localRole, (Record callbacks)]
         [content; callbacks]
