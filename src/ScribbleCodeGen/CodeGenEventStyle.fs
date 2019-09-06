@@ -74,10 +74,10 @@ module CodeGenEventStyle =
         let refinement = getCallbackRefinement state (Map.find fromState stateVarMap) transition
         (field, fieldType, Some refinement) :: callbacks
 
-    let addTransitionCallback stateVarMap codeGenMode callbacks state transition =
+    let addTransitionCallback stateVarMap callbacks state transition =
         if stateHasInternalChoice transition then
             let field = sprintf "state%d" state
-            let s = if codeGenMode = FStar then 's' else 'S'
+            let s = if !codeGenMode = FStar then 's' else 'S'
             let fieldType = sprintf "%ctate%d -> %ctate%dChoice" s state s state
             let currentStateVars = Map.find state stateVarMap |> fst |> List.map fst |> Set.ofList
             let refinement = getChoiceRefinement state currentStateVars transition
@@ -113,11 +113,11 @@ module CodeGenEventStyle =
         let recordName = sprintf "State%d_%s" state transition.label
         Map.add recordName record content
 
-    let addInternalChoices stateVarMap codeGenMode content state transition =
+    let addInternalChoices stateVarMap content state transition =
         if stateHasInternalChoice transition
         then
             let choices =
-                if codeGenMode <> FStar
+                if !codeGenMode <> FStar
                 then
                     let counter = ref 0
                     let makeChoiceEnumItem (transition : Transition) =
@@ -133,7 +133,7 @@ module CodeGenEventStyle =
         else
             content
 
-    let generateCodeContentEventStyleApi cfsm stateVarMap localRole codeGenMode =
+    let generateCodeContentEventStyleApi cfsm stateVarMap localRole =
         let _, _, transitions = cfsm
         let states = allStates cfsm
         let roles = allRoles cfsm
@@ -141,7 +141,7 @@ module CodeGenEventStyle =
         assert (List.length states = Map.count stateVarMap)
         let content = addStateRecords stateVarMap content
         let content = addRole content roles
-        let content = Map.fold (addInternalChoices stateVarMap codeGenMode) content transitions
-        let callbacks = Map.fold (addTransitionCallback stateVarMap codeGenMode) [] transitions |> List.rev
+        let content = Map.fold (addInternalChoices stateVarMap) content transitions
+        let callbacks = Map.fold (addTransitionCallback stateVarMap) [] transitions |> List.rev
         let callbacks = Map.ofList ["Callbacks" + localRole, (Record callbacks)]
         [content; callbacks]

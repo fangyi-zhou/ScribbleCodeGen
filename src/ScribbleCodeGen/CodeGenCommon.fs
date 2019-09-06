@@ -29,6 +29,8 @@ module CodeGenCommon =
         members = []
     }
 
+    let codeGenMode = ref EventApi
+
     let defaultTypeAliasMap = Map.ofList [
         "int", "int";
         "string", "string";
@@ -41,7 +43,11 @@ module CodeGenCommon =
         | None -> tyName
 
     let mkStateName state =
-        sprintf "State%d" state
+        let st =
+            match !codeGenMode with
+            | FStar -> "state"
+            | _ -> "State"
+        sprintf "%s%d" st state
 
     let allRoles ((_, _, transitions) : CFSM) =
         let accumRoles roles _ transitions =
