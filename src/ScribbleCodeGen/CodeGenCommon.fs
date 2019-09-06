@@ -109,6 +109,6 @@ module CodeGenCommon =
             List.filter (fun (name, _) -> not (isDummy name)) vars, assertions
         Map.map cleanUpSingle stateVarMap
 
-    let addRole content role =
-        let roleUnion = Union [role, [], None]
-        Map.add role roleUnion content
+    let addRole content roles =
+        let roleUnion = Union (Set.map (fun role -> role, [], None) roles |> Set.toList)
+        Map.add "Role" roleUnion content

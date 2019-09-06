@@ -88,15 +88,6 @@ module CodePrinter =
         writeln writer ("(* This file is GENERATED, do not modify manually *)")
         writeln writer ("open FluidTypes.Annotations")
         writeln writer ""
-        writeln writer """type Communications = {
-    send_int : int -> unit;
-    send_string : string -> unit;
-    send_unit : unit -> unit;
-    recv_int : unit -> int;
-    recv_string : unit -> string;
-    recv_unit : unit -> unit;
-}
-"""
         //writeln writer ("let send_int : int -> unit = failwith \"TODO\"")
         //writeln writer ("let send_string : string -> unit = failwith \"TODO\"")
         //writeln writer ("let send_unit : unit -> unit = failwith \"TODO\"")
@@ -124,7 +115,7 @@ module CodePrinter =
                 fprintfn writer "}"
         let generateForTransition t =
             match t with
-            | {action = a; payload = p; label = l; toState = toState} ->
+            | {action = a; payload = p; label = l; toState = toState; partner = r} ->
             if List.length p = 1
             then
                 let var, ty = List.head p
@@ -134,12 +125,12 @@ module CodePrinter =
                     //fprintfn writer "send_string \"%s\"" l
                     let callbackName = sprintf "state%dOnsend%s" state l
                     fprintfn writer "let %s = callbacks.%s st" var callbackName
-                    fprintfn writer "comms.send_%s %s" ty var
+                    fprintfn writer "comms.send_%s %s %s" ty r var
                 | Receive ->
                     //fprintfn writer "let label = recv_string ()"
                     //fprintfn writer "assert (label = \"%s\")" l
                     let callbackName = sprintf "state%dOnreceive%s" state l
-                    fprintfn writer "let %s = comms.recv_%s ()" var ty
+                    fprintfn writer "let %s = comms.recv_%s %s ()" var ty r
                     fprintfn writer "callbacks.%s st %s" callbackName (if isDummy var then "" else var)
                 | _ -> failwith "TODO"
                 fprintf writer "let st : State%d = " toState
@@ -160,9 +151,10 @@ module CodePrinter =
                 | {action = Send} ->
                     let generateCase transition =
                         let label = transition.label
+                        let role = transition.partner
                         fprintfn writer "| State%dChoice.%s ->" state label
                         indent writer
-                        fprintfn writer "comms.send_string \"%s\"" label
+                        fprintfn writer "comms.send_string %s \"%s\"" role label
                         fprintf writer "let st : State%d_%s = " state label
                         assembleState state ""
                         generateForTransition transition
@@ -172,14 +164,14 @@ module CodePrinter =
                     indent writer
                     List.iter generateCase stateTransition
                     unindent writer
-                | {action = Receive} ->
+                | {action = Receive; partner = role} ->
                     let generateCase transition =
                         let label = transition.label
                         fprintfn writer "| \"%s\" ->" label
                         indent writer
                         generateForTransition transition
                         unindent writer
-                    fprintfn writer "let label = comms.recv_string ()"
+                    fprintfn writer "let label = comms.recv_string %s ()" role
                     fprintfn writer "match label with"
                     indent writer
                     List.iter generateCase stateTransition
@@ -198,6 +190,17 @@ module CodePrinter =
         fprintfn writer "runState%d ()" initState
         unindent writer
 
+    let writeCommunicationDef writer =
+        writeln writer """type Communications = {
+    send_int : Role -> int -> unit;
+    send_string : Role -> string -> unit;
+    send_unit : Role -> unit -> unit;
+    recv_int : Role -> unit -> int;
+    recv_string : Role -> unit -> string;
+    recv_unit : Role -> unit -> unit;
+}
+"""
+
     let generateCode (cfsm : CFSM) protocol localRole codeGenMode =
         use fileWriter = new StreamWriter(!fileName)
         use writer = new IndentedTextWriter(fileWriter)
@@ -206,6 +209,7 @@ module CodePrinter =
         generatePreamble writer !moduleName protocol localRole
         let content = generateCodeContent cfsm stateVarMap codeGenMode localRole
         List.iter (writeContents writer) content
+        writeCommunicationDef writer
         match codeGenMode with
         | LegacyApi ->
             let init, _, _ = cfsm

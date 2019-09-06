@@ -64,7 +64,7 @@ module CodeGenVanilla =
         let states = allStates cfsm
         let roles = allRoles cfsm
         let content : Content = List.map (fun state -> mkStateName state, newObject) states |> Map.ofList
-        let content = Set.fold addRole content roles
+        let content = addRole content roles
         let content = Map.fold addTransition content transitions
         let content = Map.add "End" newObject content (* The `End` object marks the end of communication *)
         [content]
