@@ -71,6 +71,9 @@ module CodePrinter =
         else
             writeTypeDefPreamble writer isFirst name " = {"
             indent writer
+            (* FIXME: Hack *)
+            if !codeGenMode = FStar && name.StartsWith("state")
+            then fprintfn writer ("_dum%s : unit;") name
             List.iter (writeRecordItem writer) record
             unindent writer
             writeln writer "}"
@@ -121,13 +124,15 @@ module CodePrinter =
             if !codeGenMode = FStar
             then sprintf "(Mk%s?.%s st)" stateName field
             else "st." + field
-        let assembleState state var prevStateTy =
+        let assembleState state var stateTy prevStateTy =
             let vars = Map.find state stateVarMap |> fst |> List.map fst
             if List.isEmpty vars
             then fprintfn writer "()"
             else
                 fprintfn writer "{"
                 indent writer
+                if !codeGenMode = FStar
+                then fprintfn writer "_dum%s = ();" stateTy
                 List.iter (fun v -> fprintfn writer "%s = %s;" v (if v = var then v else fieldGet v prevStateTy)) vars
                 unindent writer
                 fprintfn writer "}"
@@ -154,7 +159,7 @@ module CodePrinter =
                 let stateTyName = sprintf "%s%d" stateTy toState
                 fprintf writer "let st : %s = " stateTyName
                 let prevStateName = Option.defaultValue (sprintf "state%d" state) prevStateName
-                assembleState toState var prevStateName
+                assembleState toState var stateTyName prevStateName
                 in__ ()
                 fprintfn writer "runState%d st" toState
             else failwith "Currently only support single payload"
@@ -182,7 +187,7 @@ module CodePrinter =
                         fprintfn writer "comms.send_string %s \"%s\"%s" role label semi_
                         let stateTyName = sprintf "%s%d_%s" stateTy state label
                         fprintf writer "let st : %s = " stateTyName
-                        assembleState state "" (sprintf "state%d" state)
+                        assembleState state "" stateTyName (sprintf "state%d" state)
                         in__ ()
                         generateForTransition transition (Some stateTyName)
                         unindent writer

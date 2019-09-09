@@ -112,7 +112,8 @@ module CodeGenEventStyle =
         let currentStateVars = Map.find state stateVarMap |> fst |> List.map fst |> Set.ofList
         let preconditions = List.filter (fun e -> Set.isSubset (FreeVar.free_var_term e) currentStateVars) transition.assertion
         let record = mkStateRecord (vars, assertions @ preconditions)
-        let recordName = sprintf "State%d_%s" state transition.label
+        let s = if !codeGenMode = FStar then 's' else 'S'
+        let recordName = sprintf "%ctate%d_%s" s state transition.label
         Map.add recordName record content
 
     let addInternalChoices stateVarMap content state transition =
