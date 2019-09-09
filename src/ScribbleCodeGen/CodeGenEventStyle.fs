@@ -18,7 +18,8 @@ module CodeGenEventStyle =
             | Send -> productOfPayload payload
             | Receive -> "unit"
             | _ -> failwith "TODO"
-        sprintf "%s -> %s" argType retType
+        let eff = if !codeGenMode = FStar then "ML " else ""
+        sprintf "%s -> %s%s" argType eff retType
 
     let getCallbackRefinement state varMap transition =
         let action = transition.action
@@ -78,7 +79,8 @@ module CodeGenEventStyle =
         if stateHasInternalChoice transition then
             let field = sprintf "state%d" state
             let s = if !codeGenMode = FStar then 's' else 'S'
-            let fieldType = sprintf "%ctate%d -> %ctate%dChoice" s state s state
+            let eff = if !codeGenMode = FStar then "ML " else ""
+            let fieldType = sprintf "%ctate%d -> %s%ctate%dChoice" s state eff s state
             let currentStateVars = Map.find state stateVarMap |> fst |> List.map fst |> Set.ofList
             let refinement = getChoiceRefinement state currentStateVars transition
             let callbacks = (field, fieldType, Some refinement) :: callbacks
