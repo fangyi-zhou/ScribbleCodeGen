@@ -99,7 +99,7 @@ module CodePrinter =
             | _ -> sprintf "%s%s%s" moduleName protocol localRole
         fprintfn writer "module %s" moduleName
         writeln writer ("(* This file is GENERATED, do not modify manually *)")
-        if !codeGenMode <> FStar then writeln writer ("open FluidTypes.Annotations") else writeln writer ("open FStar.All")
+        if !codeGenMode <> FStar then writeln writer ("open FluidTypes.Annotations") else writeln writer ("open FStar.All"); writeln writer ("open FStar.Error")
         writeln writer ""
         //writeln writer ("let send_int : int -> unit = failwith \"TODO\"")
         //writeln writer ("let send_string : string -> unit = failwith \"TODO\"")
@@ -207,6 +207,7 @@ module CodePrinter =
                     fprintfn writer "match label with"
                     indent writer
                     List.iter generateCase stateTransition
+                    fprintfn writer "| _ -> unexpected \"unexpected label\""
                     unindent writer
                 | _ -> writeln writer "TODO"
         unindent writer
