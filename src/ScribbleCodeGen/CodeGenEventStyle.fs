@@ -26,13 +26,13 @@ module CodeGenEventStyle =
         let payload = transition.payload |> List.filter (fst >> isDummy >> not)
         let binder (v: Variable) =
             match !codeGenMode with
-            | FStar -> App (Var (sprintf "Mk%s?.%s" state v), (Var "state"))
-            | _ -> FieldGet (Var "state", v)
+            | FStar -> App (Var (sprintf "Mk%s?.%s" state v), (Var "st"))
+            | _ -> FieldGet (Var "st", v)
         let payload, _ = CFSMAnalysis.attachRefinements transition.assertion varMap payload (Some binder) !codeGenMode
         let argType =
             match action with
-            | Send -> sprintf "(state : %s)" state
-            | Receive -> curriedPayloadRefined (("state", state, None) :: payload)
+            | Send -> sprintf "(st: %s)" state
+            | Receive -> curriedPayloadRefined (("st", state, None) :: payload)
             | _ -> failwith "TODO"
         let retType =
             match action with

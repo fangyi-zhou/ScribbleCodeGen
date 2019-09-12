@@ -3,6 +3,7 @@ namespace ScribbleCodeGen
 open System.IO
 open System.CodeDom.Compiler
 
+open FluidTypes.Refinements
 open CodeGenCommon
 open CodeGen
 
@@ -165,6 +166,15 @@ module CodePrinter =
                     //fprintfn writer "assert (label = \"%s\")" l
                     let callbackName = sprintf "state%dOnreceive%s" state l
                     fprintfn writer "let %s = comms.recv_%s %s ()%s" var ty r in_
+                    if !codeGenMode = FStar
+                    then
+                        let binder (v: Variable) = App (Var (sprintf "Mkstate%d?.%s" state v), (Var "st"))
+                        let varMap = Map.find state stateVarMap
+                        let payload, _ = CFSMAnalysis.attachRefinements t.assertion varMap p (Some binder) !codeGenMode
+                        match payload with
+                        | [_, _, Some r] -> fprintfn writer "assume (%s);" r
+                        | [_, _, None] -> ()
+                        | _ -> failwith "Unreachable"
                     fprintfn writer "callbacks.%s st %s%s" callbackName (if isDummy var then "" else var) semi_
                 | _ -> failwith "TODO"
                 let stateTyName = sprintf "%s%d" stateTy toState
