@@ -24,8 +24,11 @@ module CodeGenEventStyle =
     let getCallbackRefinement state varMap transition =
         let action = transition.action
         let payload = transition.payload |> List.filter (fst >> isDummy >> not)
-        let binder (v: Variable) = FieldGet (Var "state", v)
-        let payload, _ = CFSMAnalysis.attachRefinements transition.assertion varMap payload (Some binder)
+        let binder (v: Variable) =
+            match !codeGenMode with
+            | FStar -> App (Var (sprintf "Mk%s?.%s" state v), (Var "state"))
+            | _ -> FieldGet (Var "state", v)
+        let payload, _ = CFSMAnalysis.attachRefinements transition.assertion varMap payload (Some binder) !codeGenMode
         let argType =
             match action with
             | Send -> sprintf "(state : %s)" state
@@ -36,7 +39,11 @@ module CodeGenEventStyle =
             | Send -> productOfRefinedPayload payload
             | Receive -> "unit"
             | _ -> failwith "TODO"
-        sprintf "%s -> %s" argType retType
+        match !codeGenMode with
+        | FStar ->
+            sprintf "%s -> ML (%s)" argType retType
+        | _ ->
+            sprintf "%s -> %s" argType retType
 
     let addSingleTransitionCallback stateVarMap callbacks transition =
         let action = convertAction transition.action
@@ -46,22 +53,30 @@ module CodeGenEventStyle =
         let state = mkStateName fromState
         let fieldType = getCallbackType state transition
         let refinement = getCallbackRefinement state (Map.find fromState stateVarMap) transition
-        (field, fieldType, Some refinement) :: callbacks
+        match !codeGenMode with
+        | FStar ->
+            (field, refinement, None) :: callbacks
+        | _ ->
+            (field, fieldType, Some refinement) :: callbacks
 
     let getChoiceRefinement state vars transition =
         let mkDisjunction cases = List.fold (fun e1 e2 -> mk_binop_app Or e1 e2) (mk_bool false) cases
         let mkConjunction cases = List.fold (fun e1 e2 -> mk_binop_app And e1 e2) (mk_bool true) cases
-        let mkCase idx transition =
+        let mkCase transition =
             let preconditions = List.filter (fun e -> Set.isSubset (FreeVar.free_var_term e) vars) transition.assertion
-            let predicates = (mk_binop_app EqualInt (Var "choice") (mk_int idx)) :: preconditions
+            let predicates = (mk_binop_app EqualInt (Var "choice") (Var (sprintf "Choice%d%s" state transition.label))) :: preconditions
             mkConjunction predicates
-        let cases = List.mapi mkCase transition
+        let cases = List.map mkCase transition
         let refinementTerm = mkDisjunction cases
         let freeVars = FreeVar.free_var_term refinementTerm
         let varsToBind = Set.intersect vars freeVars
         let binder v = FieldGet (Var "state", v)
         let refinementTerm = Set.fold (fun term var -> Substitution.substitute_term term var (binder var)) refinementTerm varsToBind
-        sprintf "(state: State%d) -> {choice:int|%s}" state (CFSMAnalysis.termToString refinementTerm)
+        match !codeGenMode with
+        | FStar ->
+            sprintf "(state: state%d) -> ML (choice:state%dChoice{%s})" state state (CFSMAnalysis.termToString refinementTerm)
+        | _ ->
+            sprintf "(state: State%d) -> {choice:int|%s}" state (CFSMAnalysis.termToString refinementTerm)
 
     let addSingleInternalChoiceSendCallback stateVarMap callbacks transition =
         (* TODO: Refactor *)
@@ -73,7 +88,11 @@ module CodeGenEventStyle =
         let fieldType = getCallbackType state transition
         (* TODO: Remove those refinements in predicate *)
         let refinement = getCallbackRefinement state (Map.find fromState stateVarMap) transition
-        (field, fieldType, Some refinement) :: callbacks
+        match !codeGenMode with
+        | FStar ->
+            (field, refinement, None) :: callbacks
+        | _ ->
+            (field, fieldType, Some refinement) :: callbacks
 
     let addTransitionCallback stateVarMap callbacks state transition =
         if stateHasInternalChoice transition then
@@ -83,7 +102,10 @@ module CodeGenEventStyle =
             let fieldType = sprintf "%ctate%d -> %s%ctate%dChoice" s state eff s state
             let currentStateVars = Map.find state stateVarMap |> fst |> List.map fst |> Set.ofList
             let refinement = getChoiceRefinement state currentStateVars transition
-            let callbacks = (field, fieldType, Some refinement) :: callbacks
+            let callbacks =
+                match !codeGenMode with
+                | FStar -> (field, refinement, None) :: callbacks (* nasty HACK *)
+                | _ -> (field, fieldType, Some refinement) :: callbacks
             List.fold (addSingleInternalChoiceSendCallback stateVarMap) callbacks transition
         else
             List.fold (addSingleTransitionCallback stateVarMap) callbacks transition
@@ -100,7 +122,7 @@ module CodeGenEventStyle =
                 let boundVars = Set.add var (Set.ofList knownVars)
                 let isRefinementClosed term = Set.isSubset (FreeVar.free_var_term term) boundVars
                 let closed, notClosed = List.partition isRefinementClosed assertions
-                let newPayloadItem = var, ty, CFSMAnalysis.makeRefinementAttribute var ty closed
+                let newPayloadItem = var, ty, CFSMAnalysis.makeRefinementAttribute var ty closed !codeGenMode
                 aux (rest, notClosed) (newPayloadItem :: refinedPayload)
         Record (aux (vars, assertions) [])
 
@@ -140,11 +162,10 @@ module CodeGenEventStyle =
         let _, _, transitions = cfsm
         let states = allStates cfsm
         let roles = allRoles cfsm
-        let content = Map.empty
         assert (List.length states = Map.count stateVarMap)
-        let content = addStateRecords stateVarMap content
-        let content = addRole content roles
-        let content = Map.fold (addInternalChoices stateVarMap) content transitions
+        let stateRecords = addStateRecords stateVarMap Map.empty
+        let roles = addRole Map.empty roles
+        let choices = Map.fold (addInternalChoices stateVarMap) Map.empty transitions
         let callbacks = Map.fold (addTransitionCallback stateVarMap) [] transitions |> List.rev
         let callbacks = Map.ofList ["Callbacks" + localRole, (Record callbacks)]
-        [content; callbacks]
+        [roles; choices; stateRecords; callbacks]

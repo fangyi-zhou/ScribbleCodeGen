@@ -85,9 +85,12 @@ module CodeGenCommon =
         if List.isEmpty payload
         then "unit"
         else
-            let getType (_, tyName, refinement) =
+            let getType (v, tyName, refinement) =
                 match refinement with
-                | Some r -> r
+                | Some r ->
+                    match !codeGenMode with
+                    | FStar -> sprintf "%s:%s{%s}" v tyName r
+                    | _ -> r
                 | None -> tyName
             List.map getType payload |> Seq.ofList |> String.concat " * "
 
@@ -105,9 +108,12 @@ module CodeGenCommon =
             let getType (var, tyName, refinement) =
                 let refinement =
                     match refinement with
-                    | Some r -> r
+                    | Some r ->
+                        match !codeGenMode with
+                        | FStar -> sprintf "%s{%s}" tyName r
+                        | _ -> r
                     | None -> tyName
-                sprintf "(%s : %s)" var refinement
+                sprintf "(%s: %s)" var refinement
             List.map getType payload |> Seq.ofList |> String.concat " -> "
 
     let cleanUpVarMap stateVarMap =

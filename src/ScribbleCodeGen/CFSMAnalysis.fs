@@ -12,6 +12,7 @@ module CFSMAnalysis =
         | Const (BoolLiteral b) -> if b then "(true)" else "(false)"
         | App (App (Const (Binop b), t1), t2) -> sprintf "(%s %s %s)" (termToString t1) (binopToString b) (termToString t2)
         | App (Const (Unop u), t1) -> sprintf "(%s %s)" (unopToString u) (termToString t1)
+        | App (Var v1, Var v2) -> sprintf "(%s %s)" v1 v2
         | FieldGet (t, v) -> sprintf "(%s$%s)" (termToString t) v
         | _ -> failwith "TODO"
     and binopToString b =
@@ -31,20 +32,24 @@ module CFSMAnalysis =
         | Negate -> "-"
         | Not -> "not"
 
-    let makeRefinementAttribute var ty terms =
+    let makeRefinementAttribute var ty terms codeGenMode =
         match terms with
         | [] -> None
         | terms ->
             let terms = List.map termToString terms |> Seq.ofList
             let refinement = String.concat " && " terms
-            Some (sprintf "{%s:%s|%s}" var ty refinement)
+            match codeGenMode with
+            | FStar ->
+                Some refinement
+            | _ ->
+                Some (sprintf "{%s:%s|%s}" var ty refinement)
 
     let bindVars varsToBind binder term =
         let freeVars = FreeVar.free_var_term term
         let varsToBind = Set.intersect (Set.ofList varsToBind) freeVars
         Set.fold (fun term var -> Substitution.substitute_term term var (binder var)) term varsToBind
 
-    let attachRefinements refinements (vars, _) payloads binder =
+    let attachRefinements refinements (vars, _) payloads binder codeGenMode =
         let addVariableWithRefinements (refinements, existingPayload) (var, ty) =
             let varsToBind = List.map fst vars
             let knownVars = List.map (fun (v, _, _) -> v) existingPayload
@@ -55,7 +60,7 @@ module CFSMAnalysis =
                 match binder with
                 | Some binder -> List.map (bindVars varsToBind binder) closed
                 | None -> closed
-            let newPayloadItem = var, ty, makeRefinementAttribute var ty closed
+            let newPayloadItem = var, ty, makeRefinementAttribute var ty closed codeGenMode
             newPayloadItem, (notClosed, (newPayloadItem :: existingPayload))
         List.mapFold addVariableWithRefinements (refinements, List.map (fun (x, y) -> x, y, None) vars) payloads
 

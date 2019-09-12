@@ -25,9 +25,10 @@ module CodePrinter =
         | ch when System.Char.IsLower (ch) -> string
         | ch -> sprintf "%c%s" (System.Char.ToLower (ch)) string.[1..]
 
-    let writeTypeDefPreamble (writer: IndentedTextWriter) isFirst name content =
+    let writeTypeDefPreamble (writer: IndentedTextWriter) isFirst (name: string) content =
+        let noeq = if name.StartsWith("Callbacks") then "noeq " else "" (* Yet another nasty HACK *)
         let preamble =
-            if isFirst then "noeq type" else "and"
+            if isFirst then noeq + "type" else "and"
         let name = if !codeGenMode = FStar then ensureStartsWithLowerCase name else name
         fprintfn writer "%s %s%s" preamble name content
 
@@ -57,11 +58,21 @@ module CodePrinter =
         unindent writer
 
     let writeRecordItem (writer: IndentedTextWriter) (field, fieldType, refinement) =
-        let refinementAttribute =
-            match refinement with
-            | Some refinement -> if (!codeGenMode <> FStar) then sprintf "[<Refined(\"%s\")>] " refinement else "" (*FIXME*)
-            | None -> ""
-        fprintfn writer "%s%s : %s%s" refinementAttribute field fieldType (if !codeGenMode = FStar then ";" else "")
+        match !codeGenMode with
+        | FStar ->
+            let refinedType =
+                match refinement with
+                | Some refinement ->
+                    sprintf "(%s : %s{%s})" field fieldType refinement
+                | None -> fieldType
+            fprintfn writer "%s : %s;" field refinedType
+        | _ ->
+            let refinementAttribute =
+                match refinement with
+                | Some refinement ->
+                    sprintf "[<Refined(\"%s\")>] " refinement
+                | None -> ""
+            fprintfn writer "%s%s : %s" refinementAttribute field fieldType
 
     let writeRecord (writer: IndentedTextWriter) isFirst name record =
         if List.isEmpty record
