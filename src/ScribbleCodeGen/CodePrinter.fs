@@ -228,7 +228,8 @@ module CodePrinter =
                     fprintfn writer "match label with"
                     indent writer
                     List.iter generateCase stateTransition
-                    fprintfn writer "| _ -> unexpected \"unexpected label\""
+                    let fail = if !codeGenMode = FStar then "unexpected" else "failwith"
+                    fprintfn writer "| _ -> %s \"unexpected label\"" fail
                     unindent writer
                 | _ -> writeln writer "TODO"
         unindent writer
