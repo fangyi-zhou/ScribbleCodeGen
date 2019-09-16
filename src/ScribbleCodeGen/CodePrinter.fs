@@ -27,7 +27,7 @@ module CodePrinter =
         | ch -> sprintf "%c%s" (System.Char.ToLower (ch)) string.[1..]
 
     let writeTypeDefPreamble (writer: IndentedTextWriter) isFirst (name: string) content =
-        let noeq = if name.StartsWith("Callbacks") then "noeq " else "" (* Yet another nasty HACK *)
+        let noeq = if name.StartsWith("Callbacks") && !codeGenMode = FStar then "noeq " else "" (* Yet another nasty HACK *)
         let preamble =
             if isFirst then noeq + "type" else "and"
         let name = if !codeGenMode = FStar then ensureStartsWithLowerCase name else name
