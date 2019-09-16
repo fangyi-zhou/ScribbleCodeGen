@@ -130,8 +130,15 @@ module CodePrinter =
         let in_ = if !codeGenMode = FStar then " in" else ""
         let in__ () = if !codeGenMode = FStar then fprintfn writer "in"
         let semi_ = if !codeGenMode = FStar then ";" else ""
-        fprintfn writer "%s %s (st: %s%d) %s=" preamble functionName stateTy state (if !codeGenMode = FStar then ": ML unit " else "")
+        let bang = if !codeGenMode = EventApi then "!" else ""
+        let doBang = if !codeGenMode = EventApi then "do! " else ""
+        let returnBang = if !codeGenMode = EventApi then "return! " else ""
+        fprintfn writer "%s %s (st: %s%d) : %s =" preamble functionName stateTy state (if !codeGenMode = FStar then "ML unit" else "Async<unit>")
         indent writer
+        if !codeGenMode = EventApi
+        then
+            fprintfn writer "async {"
+            indent writer
         let fieldGet field stateName =
             if !codeGenMode = FStar
             then sprintf "(Mk%s?.%s st)" stateName field
@@ -160,12 +167,12 @@ module CodePrinter =
                     //fprintfn writer "send_string \"%s\"" l
                     let callbackName = sprintf "state%dOnsend%s" state l
                     fprintfn writer "let %s = callbacks.%s st%s" var callbackName in_
-                    fprintfn writer "comms.send_%s %s %s%s" ty r var semi_
+                    fprintfn writer "%scomms.send_%s %s %s%s" doBang ty r var semi_
                 | Receive ->
                     //fprintfn writer "let label = recv_string ()"
                     //fprintfn writer "assert (label = \"%s\")" l
                     let callbackName = sprintf "state%dOnreceive%s" state l
-                    fprintfn writer "let %s = comms.recv_%s %s ()%s" var ty r in_
+                    fprintfn writer "let%s %s = comms.recv_%s %s ()%s" bang var ty r in_
                     if !codeGenMode = FStar
                     then
                         let binder (v: Variable) = App (Var (sprintf "Mkstate%d?.%s" state v), (Var "st"))
@@ -182,7 +189,7 @@ module CodePrinter =
                 let prevStateName = Option.defaultValue (sprintf "state%d" state) prevStateName
                 assembleState toState var stateTyName prevStateName
                 in__ ()
-                fprintfn writer "runState%d st" toState
+                fprintfn writer "%srunState%d st" returnBang toState
             else failwith "Currently only support single payload"
         if List.contains state finalStates
         then
@@ -205,7 +212,7 @@ module CodePrinter =
                         else
                             fprintfn writer "| State%dChoice.%s ->" state label
                         indent writer
-                        fprintfn writer "comms.send_string %s \"%s\"%s" role label semi_
+                        fprintfn writer "%scomms.send_string %s \"%s\"%s" doBang role label semi_
                         let stateTyName = sprintf "%s%d_%s" stateTy state label
                         fprintf writer "let st : %s = " stateTyName
                         assembleState state "" stateTyName (sprintf "state%d" state)
@@ -224,7 +231,7 @@ module CodePrinter =
                         indent writer
                         generateForTransition transition None
                         unindent writer
-                    fprintfn writer "let label = comms.recv_string %s ()%s" role in_
+                    fprintfn writer "let%s label = comms.recv_string %s ()%s" bang role in_
                     fprintfn writer "match label with"
                     indent writer
                     List.iter generateCase stateTransition
@@ -232,6 +239,10 @@ module CodePrinter =
                     fprintfn writer "| _ -> %s \"unexpected label\"" fail
                     unindent writer
                 | _ -> writeln writer "TODO"
+        if !codeGenMode = EventApi
+        then
+            unindent writer
+            fprintfn writer "}"
         unindent writer
         false
 
@@ -251,14 +262,17 @@ module CodePrinter =
         let noeq = if !codeGenMode = FStar then "noeq " else ""
         let comm = if !codeGenMode = FStar then "communications" else "Communications"
         let role = if !codeGenMode = FStar then "role" else "Role"
-        let eff = if !codeGenMode = FStar then "ML " else ""
+        let mkReturn ty = if !codeGenMode = FStar then sprintf "ML %s" ty else sprintf "Async<%s>" ty
+        let unitTy = mkReturn "unit"
+        let intTy = mkReturn "int"
+        let stringTy = mkReturn "string"
         fprintfn writer "%stype %s = {" noeq comm
-        fprintfn writer "    send_int : %s -> int -> %sunit;" role eff
-        fprintfn writer "    send_string : %s -> string -> %sunit;" role eff
-        fprintfn writer "    send_unit : %s -> unit -> %sunit;" role eff
-        fprintfn writer "    recv_int : %s -> unit -> %sint;" role eff
-        fprintfn writer "    recv_string : %s -> unit -> %sstring;" role eff
-        fprintfn writer "    recv_unit : %s -> unit -> %sunit;" role eff
+        fprintfn writer "    send_int : %s -> int -> %s;" role unitTy
+        fprintfn writer "    send_string : %s -> string -> %s;" role unitTy
+        fprintfn writer "    send_unit : %s -> unit -> %s;" role unitTy
+        fprintfn writer "    recv_int : %s -> unit -> %s;" role intTy
+        fprintfn writer "    recv_string : %s -> unit -> %s;" role stringTy
+        fprintfn writer "    recv_unit : %s -> unit -> %s;" role unitTy
         fprintfn writer "}"
 
     let generateCode (cfsm : CFSM) protocol localRole =
@@ -275,7 +289,7 @@ module CodePrinter =
             let init, _, _ = cfsm
             fprintfn writer "let init = %s" (mkStateName init)
         | EventApi ->
-            fprintfn writer "let run (callbacks : Callbacks%s) (comms : Communications) =" localRole
+            fprintfn writer "let run (callbacks : Callbacks%s) (comms : Communications) : Async<unit> =" localRole
             generateRuntimeCode writer cfsm stateVarMap
         | FStar ->
             (*TODO*)
