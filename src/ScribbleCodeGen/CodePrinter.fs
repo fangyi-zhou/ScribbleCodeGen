@@ -164,7 +164,7 @@ module CodePrinter =
                 let ty = resolveTypeAlias ty
                 match a with
                 | Send ->
-                    //fprintfn writer "send_string \"%s\"" l
+                    fprintfn writer "%scomms.send_string %s \"%s\"%s" doBang r l semi_
                     let callbackName = sprintf "state%dOnsend%s" state l
                     fprintfn writer "let %s = callbacks.%s st%s" var callbackName in_
                     fprintfn writer "%scomms.send_%s %s %s%s" doBang ty r var semi_
@@ -196,8 +196,8 @@ module CodePrinter =
             writeln writer "()"
         else
             let stateTransition = Map.find state transitions
-            if List.length stateTransition = 1
-            then (* Singleton *)
+            if List.length stateTransition = 1 && (List.head stateTransition).action = Send
+            then (* Singleton send *)
                 generateForTransition (List.head stateTransition) None
             else (* Branch and Select *)
                 match List.head stateTransition with
@@ -212,7 +212,6 @@ module CodePrinter =
                         else
                             fprintfn writer "| State%dChoice.%s ->" state label
                         indent writer
-                        fprintfn writer "%scomms.send_string %s \"%s\"%s" doBang role label semi_
                         let stateTyName = sprintf "%s%d_%s" stateTy state label
                         fprintf writer "let st : %s = " stateTyName
                         assembleState state "" stateTyName (sprintf "state%d" state)
