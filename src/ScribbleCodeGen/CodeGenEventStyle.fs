@@ -70,13 +70,16 @@ module CodeGenEventStyle =
         let refinementTerm = mkDisjunction cases
         let freeVars = FreeVar.free_var_term refinementTerm
         let varsToBind = Set.intersect vars freeVars
-        let binder v = FieldGet (Var "state", v)
+        let binder (v: Variable) =
+            match !codeGenMode with
+            | FStar -> App (Var (sprintf "Mkstate%d?.%s" state v), (Var "st"))
+            | _ -> FieldGet (Var "st", v)
         let refinementTerm = Set.fold (fun term var -> Substitution.substitute_term term var (binder var)) refinementTerm varsToBind
         match !codeGenMode with
         | FStar ->
-            sprintf "(state: state%d) -> ML (choice:state%dChoice{%s})" state state (CFSMAnalysis.termToString refinementTerm)
+            sprintf "(st: state%d) -> ML (choice:state%dChoice{%s})" state state (CFSMAnalysis.termToString refinementTerm)
         | _ ->
-            sprintf "(state: State%d) -> {choice:int|%s}" state (CFSMAnalysis.termToString refinementTerm)
+            sprintf "(st: State%d) -> {choice:int|%s}" state (CFSMAnalysis.termToString refinementTerm)
 
     let addSingleInternalChoiceSendCallback stateVarMap callbacks transition =
         (* TODO: Refactor *)
