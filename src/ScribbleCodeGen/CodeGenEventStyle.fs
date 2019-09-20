@@ -60,8 +60,14 @@ module CodeGenEventStyle =
             (field, fieldType, Some refinement) :: callbacks
 
     let getChoiceRefinement state vars transition =
-        let mkDisjunction cases = List.fold (fun e1 e2 -> mk_binop_app Or e1 e2) (mk_bool false) cases
-        let mkConjunction cases = List.fold (fun e1 e2 -> mk_binop_app And e1 e2) (mk_bool true) cases
+        let mkDisjunction cases =
+            match cases with
+            | [] -> mk_bool false
+            | hd :: tl -> List.fold (mk_binop_app Or) hd tl
+        let mkConjunction cases =
+            match cases with
+            | [] -> mk_bool true
+            | hd :: tl -> List.fold (mk_binop_app And) hd tl
         let mkCase transition =
             let preconditions = List.filter (fun e -> Set.isSubset (FreeVar.free_var_term e) vars) transition.assertion
             let predicates = (mk_binop_app EqualInt (Var "choice") (Var (sprintf "Choice%d%s" state transition.label))) :: preconditions
