@@ -11,6 +11,7 @@ type CliArgument =
     | [<Mandatory>] Role of string
     | Mode of CodeGenMode
     | [<AltCommandLine("-o")>] Output of string
+    | Recursion
     interface IArgParserTemplate with
         member this.Usage =
             match this with
@@ -19,6 +20,7 @@ type CliArgument =
             | Role _ -> "Name of Local Role in the Protocol"
             | Mode _ -> "Mode of Code Generation, default F# Event Style"
             | Output _ -> "Path to Output Filename"
+            | Recursion -> "Allow Refinements on Recursion (Scribble dev-assrt)"
 
 let fixQuotes stuff =
     (* DotParser has issues parsing escaped quotes, we replace them with single quotes *)
@@ -34,11 +36,12 @@ let main argv =
     let protocol = results.GetResult Protocol
     let localRole = results.GetResult Role
     let codeGenMode = results.GetResult(Mode, defaultValue=EventApi)
+    let recursiveRefinement = results.Contains Recursion
     if results.Contains Output
     then
         let outputFileName = results.GetResult Output
         CodePrinter.fileName := outputFileName
     let content = File.ReadAllText(filename)
     let content = fixQuotes content
-    Library.processScribbleOutput content protocol localRole codeGenMode
+    Library.processScribbleOutput content protocol localRole codeGenMode recursiveRefinement
     0

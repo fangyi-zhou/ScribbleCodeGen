@@ -42,7 +42,7 @@ module CFSMConversion =
             addTransition transitions transition
         List.fold processAttribute transitions attributes
 
-    let convert (graph: GraphData.GraphData) : CFSM =
+    let convert (graph: GraphData.GraphData) (recursiveRefinement: bool) : CFSM =
         let edges = graph.Edges
         let nodes = graph.Nodes |> Map.toList |> List.map (fst >> int)
         let init = List.min nodes
