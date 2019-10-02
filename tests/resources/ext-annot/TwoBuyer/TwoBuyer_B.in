@@ -1,0 +1,12 @@
+
+digraph G {
+compound = true;
+"30" [ label="30: " ];
+"30" -> "32" [ label="S?quoteB(y: int)" ];
+"32" [ label="32: " ];
+"32" -> "33" [ label="A?proposeA(a: int)@\"(a >= 0)\"" ];
+"33" [ label="33: " ];
+"33" -> "31" [ label="A!ok(b: int)@\"((b = (y - a)) && ((y - a) <= a))\"" ];
+"31" [ label="31: " ];
+"33" -> "31" [ label="A!no(_dum2: _Unit)" ];
+}

@@ -107,7 +107,7 @@ module CodePrinter =
     let generatePreamble writer moduleName protocol localRole =
         let moduleName =
             match !codeGenMode with
-            | FStar -> (Seq.takeWhile ( (<>) '.' ) !fileName) |> System.String.Concat
+            | FStar -> Path.GetFileNameWithoutExtension(!fileName)
             | _ -> sprintf "%s%s%s" moduleName protocol localRole
         fprintfn writer "module %s" moduleName
         writeln writer ("(* This file is GENERATED, do not modify manually *)")

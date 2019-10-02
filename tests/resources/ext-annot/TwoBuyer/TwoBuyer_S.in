@@ -1,0 +1,14 @@
+
+digraph G {
+compound = true;
+"7" [ label="7: " ];
+"7" -> "9" [ label="A?bookId(id: int)" ];
+"9" [ label="9: " ];
+"9" -> "10" [ label="A!quoteA(x: int)@\"(x >= 0)\"" ];
+"10" [ label="10: " ];
+"10" -> "11" [ label="B!quoteB(y: int)@\"(x = y)\"" ];
+"11" [ label="11: " ];
+"11" -> "8" [ label="A?buy(_dum1: _Unit)" ];
+"8" [ label="8: " ];
+"11" -> "8" [ label="A?cancel(_dum3: _Unit)" ];
+}
