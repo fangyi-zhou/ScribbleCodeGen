@@ -21,12 +21,13 @@ module CFSMConversion =
         | None -> Map.add from [transition] transitions
 
     let parseTransition fromState toState label : Transition =
-        let partner, action, label, payload, assertionString = 
+        let partner, action, label, payload, assertionString, recVarExpr =
             if not !newSyntax
                 then Parsing.parseOldDotLabel label
                 else Parsing.parseNewDotLabel label
         let parsedAssertion = try (Some (parse_term assertionString)) with e -> None
         let chunkedAssertions = Option.map cutAssertion parsedAssertion |> Option.defaultValue []
+        let recVarExpr = List.map parse_term recVarExpr
         {
             fromState = fromState
             toState = toState
@@ -35,6 +36,7 @@ module CFSMConversion =
             label = label
             payload = payload
             assertion = chunkedAssertions
+            recVarExpr = recVarExpr
         }
 
     let convertEdge (transitions : TransitionMap) (fromState, toState) attributes =

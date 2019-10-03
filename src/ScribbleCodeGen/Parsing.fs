@@ -93,13 +93,13 @@ module Parsing =
         | None ->
             (* No assertion *)
             "", str
-    
+
     let parseNewAssertionString str : string * char seq =
         let assertions, rest = span ((<>) '}') str
-        let assertions = 
+        let assertions =
             match Seq.tryHead assertions with
-            | Some '{' -> 
-                let assertions = Seq.tail assertions |> seqToString 
+            | Some '{' ->
+                let assertions = Seq.tail assertions |> seqToString
                 let assertions = Regex.Replace(assertions, @"\bTrue\b", "true")
                 let assertions = Regex.Replace(assertions, @"\bFalse\b", "false")
                 (* "true" means no assertions *)
@@ -110,9 +110,22 @@ module Parsing =
             | Some '}' -> Seq.tail rest
             | _ -> failwith "unexpected"
         assertions, rest
-    
-    let parseStateVars _ = "", Seq.empty (* TODO *)
-            
+
+    let parseRecVars str : char seq list * char seq =
+        match Seq.tryHead str with
+        | Some '<' ->
+            let rec aux str acc =
+                let str = skipSpaces str
+                let expr, rest = span (fun c -> c <> '>' && c <> ',') str
+                match Seq.tryHead rest with
+                | Some '>' ->
+                    let acc = if Seq.isEmpty expr then acc else expr :: acc
+                    List.rev acc, Seq.tail rest
+                | Some ',' -> aux (Seq.tail rest) (expr :: acc)
+                | _ -> failwith "Unexpected recursion expression"
+            aux (Seq.tail str) []
+        | _ -> failwith "invalid recursion variable list, missing '<'"
+
 
     let parseDotLabelPrefix (str: string) : Role * Action * Label * Payload * char seq =
         let str = str.ToCharArray() |> Seq.ofArray
@@ -120,17 +133,18 @@ module Parsing =
         let action, str = parseAction str
         let label, str = parseLabel str
         let payload, str = parsePayload str
-        partner, action, label, payload, str 
+        partner, action, label, payload, str
 
-    let parseOldDotLabel (str: string) = 
+    let parseOldDotLabel (str: string) =
         let partner, action, label, payload, str = parseDotLabelPrefix str
         let assertion, str = parseOldAssertionString str
         if not (Seq.isEmpty str) then eprintfn "Unexpected %s" (seqToString str)
-        partner, action, label, payload, assertion 
+        partner, action, label, payload, assertion, []
 
-    let parseNewDotLabel (str: string) = 
+    let parseNewDotLabel (str: string) =
         let partner, action, label, payload, str = parseDotLabelPrefix str
         let assertion, str = parseNewAssertionString str
-        let stateVars, str = parseStateVars str
+        let stateVars, str = parseRecVars str
+        let stateVars = List.map seqToString stateVars
         if not (Seq.isEmpty str) then eprintfn "Unexpected %s" (seqToString str)
-        partner, action, label, payload, assertion
+        partner, action, label, payload, assertion, stateVars

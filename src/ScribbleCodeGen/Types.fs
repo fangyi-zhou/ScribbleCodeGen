@@ -28,6 +28,7 @@ type Transition = {
     label: Label;
     payload: Payload
     assertion: Assertion;
+    recVarExpr: Term list
 }
 
 type TransitionMap = Map<State, Transition list>
