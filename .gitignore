@@ -189,3 +189,5 @@ gen/
 
 .ionide/*
 
+**/res.dot
+

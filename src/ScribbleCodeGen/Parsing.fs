@@ -1,5 +1,7 @@
 namespace ScribbleCodeGen
 
+open System.Text.RegularExpressions
+
 module Parsing =
 
     let isVariable x
@@ -72,7 +74,7 @@ module Parsing =
             | _ -> Send, str
         | _ -> failwith "invalid action"
 
-    let parseAssertionString str : string * char seq =
+    let parseOldAssertionString str : string * char seq =
         (* dollar is used to wrap the assertion instead of quotes due to DotParser issue *)
         match Seq.tryHead str with
         | Some '@' ->
@@ -91,13 +93,44 @@ module Parsing =
         | None ->
             (* No assertion *)
             "", str
+    
+    let parseNewAssertionString str : string * char seq =
+        let assertions, rest = span ((<>) '}') str
+        let assertions = 
+            match Seq.tryHead assertions with
+            | Some '{' -> 
+                let assertions = Seq.tail assertions |> seqToString 
+                let assertions = Regex.Replace(assertions, @"\bTrue\b", "true")
+                let assertions = Regex.Replace(assertions, @"\bFalse\b", "false")
+                (* "true" means no assertions *)
+                if assertions = "true" then "" else assertions
+            | _ -> failwith "invalid assertion, missing '{'"
+        let rest =
+            match Seq.tryHead rest with
+            | Some '}' -> Seq.tail rest
+            | _ -> failwith "unexpected"
+        assertions, rest
+    
+    let parseStateVars _ = "", Seq.empty (* TODO *)
+            
 
-    let parseDotLabel (str: string) : Role * Action * Label * Payload * string =
+    let parseDotLabelPrefix (str: string) : Role * Action * Label * Payload * char seq =
         let str = str.ToCharArray() |> Seq.ofArray
         let partner, str = parseRole str
         let action, str = parseAction str
         let label, str = parseLabel str
         let payload, str = parsePayload str
-        let assertion, str = parseAssertionString str
+        partner, action, label, payload, str 
+
+    let parseOldDotLabel (str: string) = 
+        let partner, action, label, payload, str = parseDotLabelPrefix str
+        let assertion, str = parseOldAssertionString str
+        if not (Seq.isEmpty str) then eprintfn "Unexpected %s" (seqToString str)
+        partner, action, label, payload, assertion 
+
+    let parseNewDotLabel (str: string) = 
+        let partner, action, label, payload, str = parseDotLabelPrefix str
+        let assertion, str = parseNewAssertionString str
+        let stateVars, str = parseStateVars str
         if not (Seq.isEmpty str) then eprintfn "Unexpected %s" (seqToString str)
         partner, action, label, payload, assertion

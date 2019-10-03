@@ -4,6 +4,7 @@ open FluidTypes.Refinements
 open FluidTypes.Annotations.AnnotationParser
 
 module CFSMConversion =
+    let newSyntax = ref false
 
     let newTransitionMap = Map.empty
 
@@ -20,7 +21,10 @@ module CFSMConversion =
         | None -> Map.add from [transition] transitions
 
     let parseTransition fromState toState label : Transition =
-        let partner, action, label, payload, assertionString = Parsing.parseDotLabel label
+        let partner, action, label, payload, assertionString = 
+            if not !newSyntax
+                then Parsing.parseOldDotLabel label
+                else Parsing.parseNewDotLabel label
         let parsedAssertion = try (Some (parse_term assertionString)) with e -> None
         let chunkedAssertions = Option.map cutAssertion parsedAssertion |> Option.defaultValue []
         {
@@ -43,6 +47,7 @@ module CFSMConversion =
         List.fold processAttribute transitions attributes
 
     let convert (graph: GraphData.GraphData) (recursiveRefinement: bool) : CFSM =
+        newSyntax := recursiveRefinement
         let edges = graph.Edges
         let nodes = graph.Nodes |> Map.toList |> List.map (fst >> int)
         let init = List.min nodes
