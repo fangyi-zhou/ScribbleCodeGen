@@ -1,0 +1,14 @@
+
+digraph G {
+compound = true;
+"35" [ label="35:  <> True" ];
+"35" -> "37" [ label="A?bookId(id: int){True}<>" ];
+"37" [ label="37:  <> True" ];
+"37" -> "38" [ label="A!quoteA(x: int){(x >= 0)}<>" ];
+"36" [ label="36:  <> True" ];
+"39" [ label="39:  <> True" ];
+"39" -> "36" [ label="A?buy(){True}<>" ];
+"39" -> "36" [ label="A?cancel(){True}<>" ];
+"38" [ label="38:  <> True" ];
+"38" -> "39" [ label="B!quoteB(y: int){(x = y)}<>" ];
+}

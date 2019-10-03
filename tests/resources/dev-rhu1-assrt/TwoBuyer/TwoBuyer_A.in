@@ -1,0 +1,18 @@
+
+digraph G {
+compound = true;
+"9" [ label="9:  <> True" ];
+"9" -> "11" [ label="S!bookId(id: int){True}<>" ];
+"13" [ label="13:  <> True" ];
+"13" -> "14" [ label="B?no(){True}<>" ];
+"13" -> "15" [ label="B?ok(b: int){((b = (y - a)) && ((y - a) <= a))}<>" ];
+"12" [ label="12:  <> True" ];
+"12" -> "13" [ label="B!proposeA(a: int){((a >= 0) && (a <= x))}<>" ];
+"11" [ label="11:  <> True" ];
+"11" -> "12" [ label="S?quoteA(x: int){(x >= 0)}<>" ];
+"10" [ label="10:  <> True" ];
+"15" [ label="15:  <> True" ];
+"15" -> "10" [ label="S!buy(){True}<>" ];
+"14" [ label="14:  <> True" ];
+"14" -> "10" [ label="S!cancel(){True}<>" ];
+}

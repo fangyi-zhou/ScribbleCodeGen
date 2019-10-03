@@ -1,0 +1,12 @@
+
+digraph G {
+compound = true;
+"23" [ label="23:  <> True" ];
+"23" -> "25" [ label="S?quoteB(y: int){(x = y)}<>" ];
+"25" [ label="25:  <> True" ];
+"25" -> "26" [ label="A?proposeA(a: int){((a >= 0) && (a <= x))}<>" ];
+"24" [ label="24:  <> True" ];
+"26" [ label="26:  <> True" ];
+"26" -> "24" [ label="A!no(){True}<>" ];
+"26" -> "24" [ label="A!ok(b: int){((b = (y - a)) && ((y - a) <= a))}<>" ];
+}

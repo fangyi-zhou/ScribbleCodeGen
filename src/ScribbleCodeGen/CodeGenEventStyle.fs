@@ -123,9 +123,9 @@ module CodeGenEventStyle =
         let rec aux (vars, assertions) refinedPayload =
             match vars with
             | [] ->
-                if List.isEmpty assertions
-                then List.rev refinedPayload
-                else failwith "Invalid CFSM"
+                if not (List.isEmpty assertions)
+                then eprintfn "Dropped assertions %A" assertions
+                List.rev refinedPayload
             | (var, ty) :: rest ->
                 let knownVars = List.map (fun (v, _, _) -> v) refinedPayload
                 let boundVars = Set.add var (Set.ofList knownVars)
