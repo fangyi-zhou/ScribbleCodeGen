@@ -158,6 +158,7 @@ module CodePrinter =
         let generateForTransition t prevStateName =
             match t with
             | {action = a; payload = p; label = l; toState = toState; partner = r} ->
+            let p = if List.isEmpty p then ["_", "unit"] else p
             if List.length p = 1
             then
                 let var, ty = List.head p
