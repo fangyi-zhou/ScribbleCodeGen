@@ -103,7 +103,7 @@ let run (callbacks : CallbacksA) (comms : Communications) : Async<unit> =
                     }
                     return! runState15 st
                 | "no" ->
-                    let! _ = comms.recv_unit B ()
+                    let! _dummy = comms.recv_unit B ()
                     callbacks.state13Onreceiveno st 
                     let st : State14 = {
                         id = st.id;
@@ -116,16 +116,16 @@ let run (callbacks : CallbacksA) (comms : Communications) : Async<unit> =
     and runState14 (st: State14) : Async<unit> =
         async {
             do! comms.send_string S "cancel"
-            let _ = callbacks.state14Onsendcancel st
-            do! comms.send_unit S _
+            let _dummy = callbacks.state14Onsendcancel st
+            do! comms.send_unit S _dummy
             let st : State10 = ()
             return! runState10 st
         }
     and runState15 (st: State15) : Async<unit> =
         async {
             do! comms.send_string S "buy"
-            let _ = callbacks.state15Onsendbuy st
-            do! comms.send_unit S _
+            let _dummy = callbacks.state15Onsendbuy st
+            do! comms.send_unit S _dummy
             let st : State10 = ()
             return! runState10 st
         }

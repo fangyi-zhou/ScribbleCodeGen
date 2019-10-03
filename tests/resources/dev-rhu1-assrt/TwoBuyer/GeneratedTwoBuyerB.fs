@@ -82,8 +82,8 @@ let run (callbacks : CallbacksB) (comms : Communications) : Async<unit> =
                         a = st.a;
                     }
                     do! comms.send_string A "no"
-                    let _ = callbacks.state26Onsendno st
-                    do! comms.send_unit A _
+                    let _dummy = callbacks.state26Onsendno st
+                    do! comms.send_unit A _dummy
                     let st : State24 = ()
                     return! runState24 st
                 | State26Choice.ok ->

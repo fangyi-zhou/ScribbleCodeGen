@@ -62,7 +62,7 @@ let run (callbacks : callbacksS) (comms : communications) : ML unit =
         let label = comms.recv_string C () in
         match label with
             | "BYE" ->
-                let _ = comms.recv_unit C () in
+                let _dummy = comms.recv_unit C () in
                 callbacks.state22OnreceiveBYE st ;
                 let st : state25 = {
                     _dumstate25 = ();
@@ -105,8 +105,8 @@ let run (callbacks : callbacksS) (comms : communications) : ML unit =
         runState20 st
     and runState25 (st: state25) : ML unit =
         comms.send_string C "BYE";
-        let _ = callbacks.state25OnsendBYE st in
-        comms.send_unit C _;
+        let _dummy = callbacks.state25OnsendBYE st in
+        comms.send_unit C _dummy;
         let st : state21 = ()
         in
         runState21 st

@@ -81,13 +81,13 @@ let run (callbacks : callbacksS) (comms : communications) : ML unit =
         let label = comms.recv_string A () in
         match label with
             | "buy" ->
-                let _ = comms.recv_unit A () in
+                let _dummy = comms.recv_unit A () in
                 callbacks.state39Onreceivebuy st ;
                 let st : state36 = ()
                 in
                 runState36 st
             | "cancel" ->
-                let _ = comms.recv_unit A () in
+                let _dummy = comms.recv_unit A () in
                 callbacks.state39Onreceivecancel st ;
                 let st : state36 = ()
                 in

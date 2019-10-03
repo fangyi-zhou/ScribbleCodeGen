@@ -109,7 +109,7 @@ let run (callbacks : callbacksA) (comms : communications) : ML unit =
                 in
                 runState15 st
             | "no" ->
-                let _ = comms.recv_unit B () in
+                let _dummy = comms.recv_unit B () in
                 callbacks.state13Onreceiveno st ;
                 let st : state14 = {
                     _dumstate14 = ();
@@ -122,15 +122,15 @@ let run (callbacks : callbacksA) (comms : communications) : ML unit =
             | _ -> unexpected "unexpected label"
     and runState14 (st: state14) : ML unit =
         comms.send_string S "cancel";
-        let _ = callbacks.state14Onsendcancel st in
-        comms.send_unit S _;
+        let _dummy = callbacks.state14Onsendcancel st in
+        comms.send_unit S _dummy;
         let st : state10 = ()
         in
         runState10 st
     and runState15 (st: state15) : ML unit =
         comms.send_string S "buy";
-        let _ = callbacks.state15Onsendbuy st in
-        comms.send_unit S _;
+        let _dummy = callbacks.state15Onsendbuy st in
+        comms.send_unit S _dummy;
         let st : state10 = ()
         in
         runState10 st

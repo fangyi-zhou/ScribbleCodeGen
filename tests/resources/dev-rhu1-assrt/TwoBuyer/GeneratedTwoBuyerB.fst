@@ -87,8 +87,8 @@ let run (callbacks : callbacksB) (comms : communications) : ML unit =
                 }
                 in
                 comms.send_string A "no";
-                let _ = callbacks.state26Onsendno st in
-                comms.send_unit A _;
+                let _dummy = callbacks.state26Onsendno st in
+                comms.send_unit A _dummy;
                 let st : state24 = ()
                 in
                 runState24 st

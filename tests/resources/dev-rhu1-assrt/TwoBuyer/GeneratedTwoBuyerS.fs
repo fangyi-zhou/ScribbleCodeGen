@@ -80,12 +80,12 @@ let run (callbacks : CallbacksS) (comms : Communications) : Async<unit> =
             let! label = comms.recv_string A ()
             match label with
                 | "buy" ->
-                    let! _ = comms.recv_unit A ()
+                    let! _dummy = comms.recv_unit A ()
                     callbacks.state39Onreceivebuy st 
                     let st : State36 = ()
                     return! runState36 st
                 | "cancel" ->
-                    let! _ = comms.recv_unit A ()
+                    let! _dummy = comms.recv_unit A ()
                     callbacks.state39Onreceivecancel st 
                     let st : State36 = ()
                     return! runState36 st

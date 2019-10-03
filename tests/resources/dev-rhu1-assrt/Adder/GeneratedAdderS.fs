@@ -60,7 +60,7 @@ let run (callbacks : CallbacksS) (comms : Communications) : Async<unit> =
             let! label = comms.recv_string C ()
             match label with
                 | "BYE" ->
-                    let! _ = comms.recv_unit C ()
+                    let! _dummy = comms.recv_unit C ()
                     callbacks.state22OnreceiveBYE st 
                     let st : State25 = {
                         u = st.u;
@@ -102,8 +102,8 @@ let run (callbacks : CallbacksS) (comms : Communications) : Async<unit> =
     and runState25 (st: State25) : Async<unit> =
         async {
             do! comms.send_string C "BYE"
-            let _ = callbacks.state25OnsendBYE st
-            do! comms.send_unit C _
+            let _dummy = callbacks.state25OnsendBYE st
+            do! comms.send_unit C _dummy
             let st : State21 = ()
             return! runState21 st
         }

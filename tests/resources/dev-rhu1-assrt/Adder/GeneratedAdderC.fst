@@ -77,8 +77,8 @@ let run (callbacks : callbacksC) (comms : communications) : ML unit =
                 }
                 in
                 comms.send_string S "BYE";
-                let _ = callbacks.state10OnsendBYE st in
-                comms.send_unit S _;
+                let _dummy = callbacks.state10OnsendBYE st in
+                comms.send_unit S _dummy;
                 let st : state13 = {
                     _dumstate13 = ();
                     u = (Mkstate10_BYE?.u st);
@@ -127,7 +127,7 @@ let run (callbacks : callbacksC) (comms : communications) : ML unit =
         let label = comms.recv_string S () in
         match label with
             | "BYE" ->
-                let _ = comms.recv_unit S () in
+                let _dummy = comms.recv_unit S () in
                 callbacks.state13OnreceiveBYE st ;
                 let st : state9 = ()
                 in
