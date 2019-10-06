@@ -20,5 +20,8 @@
     <None Include="paket.references" />
     <None Include="paket.template" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\paket-files\fangyi-zhou\DotParser\src\DotParser\DotParser.fsproj" />
+  </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

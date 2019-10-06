@@ -2,12 +2,13 @@ framework: auto-detect
 
 source https://nuget.org/api/v2
 
-nuget DotParser
+github fangyi-zhou/DotParser:dev
 nuget FluidTypes.AnnotationParsing
 nuget FSharp.Core
 nuget Argu
 nuget FSharpx.Collections < 2.0
 nuget FSharpx.Collections.Experimental < 2.0
+nuget FsLexYacc.Runtime = 9.0.2
 
 nuget Expecto
 nuget Expecto.BenchmarkDotNet
