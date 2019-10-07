@@ -48,12 +48,25 @@ module CFSMConversion =
             addTransition transitions transition
         List.fold processAttribute transitions attributes
 
+    let convertNode (recVarMap: RecVarMap) state attributes =
+        if not !newSyntax
+        then
+            recVarMap
+        else
+            let state = int state
+            let label = Map.find "label" attributes
+            let recvars, assertion = Parsing.parseRecVarEntry label
+            let assertion = parse_term assertion |> cutAssertion
+            Map.add state (recvars, assertion) recVarMap
+
     let convert (graph: GraphData.GraphData) (recursiveRefinement: bool) : CFSM =
         newSyntax := recursiveRefinement
         let edges = graph.Edges
-        let nodes = graph.Nodes |> Map.toList |> List.map (fst >> int)
-        let init = List.min nodes
-        let initMap = List.map (fun node -> node, []) nodes |> Map.ofList
+        let nodes = graph.Nodes
+        let states = nodes |> Map.toList |> List.map (fst >> int)
+        let init = List.min states
+        let recVarMap = Map.fold convertNode Map.empty nodes
+        let initMap = List.map (fun state -> state, []) states |> Map.ofList
         let transitionMap = Map.fold convertEdge initMap edges
         let finals = Map.filter (fun _ trans -> List.isEmpty trans) transitionMap |> Map.toList |> List.map fst
-        init, finals, transitionMap
+        init, finals, transitionMap, recVarMap

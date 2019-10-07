@@ -168,7 +168,7 @@ module CodeGenEventStyle =
             content
 
     let generateCodeContentEventStyleApi cfsm stateVarMap localRole =
-        let _, _, transitions = cfsm
+        let _, _, transitions, _ = cfsm
         let states = allStates cfsm
         let roles = allRoles cfsm
         assert (List.length states = Map.count stateVarMap)

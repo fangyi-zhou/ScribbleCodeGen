@@ -60,7 +60,7 @@ module CodeGenVanilla =
             else generateChoices content state transition
 
     let generateCodeContentVanillaApi cfsm =
-        let _, _, transitions = cfsm
+        let _, _, transitions, _ = cfsm
         let states = allStates cfsm
         let roles = allRoles cfsm
         let content : Content = List.map (fun state -> mkStateName state, newObject) states |> Map.ofList

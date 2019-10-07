@@ -65,7 +65,7 @@ module CFSMAnalysis =
         List.mapFold addVariableWithRefinements (refinements, List.map (fun (x, y) -> x, y, None) vars) payloads
 
     let constructVariableMap (cfsm : CFSM) : StateVariableMap =
-        let init, finals, allTransitions = cfsm
+        let init, finals, allTransitions, _recVars = cfsm
         let rec aux (varMap : StateVariableMap) state (vars, assertions) =
             if Map.containsKey state varMap
             then varMap

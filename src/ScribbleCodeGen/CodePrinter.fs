@@ -123,7 +123,7 @@ module CodePrinter =
 
 
     let generateRunState (writer: IndentedTextWriter) (cfsm : CFSM) stateVarMap isInit state =
-        let _, finalStates, transitions = cfsm
+        let _, finalStates, transitions, _ = cfsm
         let functionName = sprintf "runState%d" state
         let preamble = if isInit then "let rec" else "and"
         let stateTy = if !codeGenMode = FStar then "state" else "State"
@@ -248,7 +248,7 @@ module CodePrinter =
 
 
     let generateRuntimeCode writer (cfsm : CFSM) stateVarMap =
-        let initState, _, _ = cfsm
+        let initState, _, _, _ = cfsm
         let states = allStates cfsm
         indent writer
         printfn "%A" cfsm
@@ -286,7 +286,7 @@ module CodePrinter =
         writeCommunicationDef writer
         match !codeGenMode with
         | LegacyApi ->
-            let init, _, _ = cfsm
+            let init, _, _, _ = cfsm
             fprintfn writer "let init = %s" (mkStateName init)
         | EventApi ->
             fprintfn writer "let run (callbacks : Callbacks%s) (comms : Communications) : Async<unit> =" localRole

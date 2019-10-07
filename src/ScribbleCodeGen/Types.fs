@@ -32,7 +32,8 @@ type Transition = {
 }
 
 type TransitionMap = Map<State, Transition list>
-type CFSM = (* init *) State * (* terminal *) State list * TransitionMap
+type RecVarMap = Map<State, (Variable * (* init expr *) string) list * Assertion>
+type CFSM = (* init *) State * (* terminal *) State list * TransitionMap * RecVarMap
 
 type Refinement = string
 type StateVariableMap = Map<State, (Variable * VarType) list * Assertion>

@@ -148,3 +148,30 @@ module Parsing =
         let stateVars = List.map seqToString stateVars
         if not (Seq.isEmpty str) then eprintfn "Unexpected %s" (seqToString str)
         partner, action, label, payload, assertion, stateVars
+
+    let parseRecVarEntry (str: string) =
+        let str = Seq.skipWhile ((<>) '<') str
+        match Seq.tryHead str with
+        | Some '<' ->
+            let parseSingle str =
+                let var, rest = span ((<>) ':') str
+                match Seq.tryHead rest with
+                | Some ':' ->
+                    let rest = Seq.tail rest
+                    match Seq.tryHead rest with
+                    | Some '=' ->
+                        let rest = Seq.tail rest
+                        seqToString var, seqToString rest
+                    | _ -> failwith "invalid initial expression, missing '='"
+                | _ -> failwith "invalid initial expression, missing ':'"
+            let rec aux str acc =
+                let str = skipSpaces str
+                let expr, rest = span (fun c -> c <> '>' && c <> ',') str
+                match Seq.tryHead rest with
+                | Some '>' ->
+                    let acc = if Seq.isEmpty expr then acc else (parseSingle expr) :: acc
+                    List.rev acc, seqToString (Seq.tail rest)
+                | Some ',' -> aux (Seq.tail rest) ((parseSingle expr) :: acc)
+                | _ -> failwith "Unexpected recursion expression"
+            aux (Seq.tail str) []
+        | _ -> failwith "invalid recursion variable list, missing '<'"

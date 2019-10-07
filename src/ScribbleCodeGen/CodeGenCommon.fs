@@ -49,13 +49,13 @@ module CodeGenCommon =
             | _ -> "State"
         sprintf "%s%d" st state
 
-    let allRoles ((_, _, transitions) : CFSM) =
+    let allRoles ((_, _, transitions, _) : CFSM) =
         let accumRoles roles _ transitions =
             let newRoles = List.map (fun (t: Transition) -> t.partner) transitions
             Set.union (Set.ofList newRoles) roles
         Map.fold accumRoles Set.empty transitions
 
-    let allStates : CFSM -> State list = (fun (_, _, v) -> v) >> Map.toList >> List.map (fst >> int)
+    let allStates : CFSM -> State list = (fun (_, _, v, _) -> v) >> Map.toList >> List.map (fst >> int)
 
     let isDummy (x : string) = x.StartsWith("_")
 
