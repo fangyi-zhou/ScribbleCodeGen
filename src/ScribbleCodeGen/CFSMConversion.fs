@@ -12,6 +12,7 @@ module CFSMConversion =
         match assertion with
         | App (App (Const (Binop And), t1), t2) ->
             cutAssertion t1 @ cutAssertion t2
+        | Const (BoolLiteral true) -> []
         | assertion -> [assertion]
 
     let addTransition (transitions: TransitionMap) (transition: Transition) : TransitionMap =
@@ -20,13 +21,22 @@ module CFSMConversion =
         | Some oldTransitions -> Map.add from (transition :: oldTransitions) transitions
         | None -> Map.add from [transition] transitions
 
+    let parseAssertionAndChunk assertion =
+        if assertion = ""
+        then []
+        else
+            try
+                let term = parse_term assertion
+                cutAssertion term
+            with _ ->
+                eprintfn "Cannot parse %s, dropping" assertion
+                []
+
     let parseTransition fromState toState label : Transition =
         let partner, action, label, payload, assertionString, recVarExpr =
             if not !newSyntax
                 then Parsing.parseOldDotLabel label
                 else Parsing.parseNewDotLabel label
-        let parsedAssertion = try (Some (parse_term assertionString)) with e -> None
-        let chunkedAssertions = Option.map cutAssertion parsedAssertion |> Option.defaultValue []
         let recVarExpr = List.map parse_term recVarExpr
         {
             fromState = fromState
@@ -35,7 +45,7 @@ module CFSMConversion =
             action = action
             label = label
             payload = payload
-            assertion = chunkedAssertions
+            assertion = parseAssertionAndChunk assertionString
             recVarExpr = recVarExpr
         }
 
@@ -56,7 +66,7 @@ module CFSMConversion =
             let state = int state
             let label = Map.find "label" attributes
             let recvars, assertion = Parsing.parseRecVarEntry label
-            let assertion = parse_term assertion |> cutAssertion
+            let assertion = parseAssertionAndChunk assertion
             Map.add state (recvars, assertion) recVarMap
 
     let convert (graph: GraphData.GraphData) (recursiveRefinement: bool) : CFSM =

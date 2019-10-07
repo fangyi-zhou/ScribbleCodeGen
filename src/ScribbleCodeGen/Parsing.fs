@@ -163,7 +163,7 @@ module Parsing =
                     let rest = Seq.tail rest
                     match Seq.tryHead rest with
                     | Some '=' ->
-                        let rest = Seq.tail rest
+                        let rest = Seq.tail rest |> skipSpaces
                         seqToString var, seqToString rest
                     | _ -> failwith "invalid initial expression, missing '='"
                 | _ -> failwith "invalid initial expression, missing ':'"
@@ -173,7 +173,8 @@ module Parsing =
                 match Seq.tryHead rest with
                 | Some '>' ->
                     let acc = if Seq.isEmpty expr then acc else (parseSingle expr) :: acc
-                    List.rev acc, fixAssertionDiscrepancy (seqToString (Seq.tail rest))
+                    let assertions = Seq.tail rest |> skipSpaces |> seqToString |> fixAssertionDiscrepancy
+                    List.rev acc, assertions
                 | Some ',' -> aux (Seq.tail rest) ((parseSingle expr) :: acc)
                 | _ -> failwith "Unexpected recursion expression"
             aux (Seq.tail str) []
