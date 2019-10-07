@@ -121,43 +121,55 @@ module CodePrinter =
         //writeln writer ("let recv_unit : unit -> unit = failwith \"TODO\"")
         //writeln writer ""
 
+    let assembleState writer stateVarMap recVarMap state var stateTy prevStateTy recExprs =
+        let fieldGet field stateName =
+            if !codeGenMode = FStar
+            then sprintf "(Mk%s?.%s st)" stateName field
+            else "st." + field
+        let recExprs = Map.ofList recExprs
+        let getInitExpr v =
+            match Map.tryFind state recVarMap with
+            | Some (vars, _) ->
+                let vars = Map.ofList vars
+                Map.tryFind v vars
+            | None -> None
+        let vars = Map.find state stateVarMap |> fst |> List.map fst
+        if List.isEmpty vars
+        then fprintfn writer "()"
+        else
+            fprintfn writer "{"
+            indent writer
+            if !codeGenMode = FStar
+            then fprintfn writer "_dum%s = ();" stateTy
+            let getVar v =
+                match v with
+                | v when v = var -> v
+                | v when Map.containsKey v recExprs -> Map.find v recExprs
+                | v -> Option.defaultValue (fieldGet v prevStateTy) (getInitExpr v)
+            List.iter (fun v -> fprintfn writer "%s = %s;" v (getVar v)) vars
+            unindent writer
+            fprintfn writer "}"
 
     let generateRunState (writer: IndentedTextWriter) (cfsm : CFSM) stateVarMap isInit state =
-        let _, finalStates, transitions, _ = cfsm
-        let functionName = sprintf "runState%d" state
-        let preamble = if isInit then "let rec" else "and"
-        let stateTy = if !codeGenMode = FStar then "state" else "State"
         let in_ = if !codeGenMode = FStar then " in" else ""
-        let in__ () = if !codeGenMode = FStar then fprintfn writer "in"
+        let in__ writer = if !codeGenMode = FStar then fprintfn writer "in"
         let semi_ = if !codeGenMode = FStar then ";" else ""
         let bang = if !codeGenMode = EventApi then "!" else ""
         let doBang = if !codeGenMode = EventApi then "do! " else ""
         let returnBang = if !codeGenMode = EventApi then "return! " else ""
+        let stateTy = if !codeGenMode = FStar then "state" else "State"
+        let _, finalStates, transitions, recVarMap = cfsm
+        let functionName = sprintf "runState%d" state
+        let preamble = if isInit then "let rec" else "and"
         fprintfn writer "%s %s (st: %s%d) : %s =" preamble functionName stateTy state (if !codeGenMode = FStar then "ML unit" else "Async<unit>")
         indent writer
         if !codeGenMode = EventApi
         then
             fprintfn writer "async {"
             indent writer
-        let fieldGet field stateName =
-            if !codeGenMode = FStar
-            then sprintf "(Mk%s?.%s st)" stateName field
-            else "st." + field
-        let assembleState state var stateTy prevStateTy =
-            let vars = Map.find state stateVarMap |> fst |> List.map fst
-            if List.isEmpty vars
-            then fprintfn writer "()"
-            else
-                fprintfn writer "{"
-                indent writer
-                if !codeGenMode = FStar
-                then fprintfn writer "_dum%s = ();" stateTy
-                List.iter (fun v -> fprintfn writer "%s = %s;" v (if v = var then v else fieldGet v prevStateTy)) vars
-                unindent writer
-                fprintfn writer "}"
         let generateForTransition t prevStateName =
             match t with
-            | {action = a; payload = p; label = l; toState = toState; partner = r} ->
+            | {action = a; payload = p; label = l; toState = toState; partner = r; recVarExpr = recExprs} ->
             let p = if List.isEmpty p then ["_dummy", "unit"] else p
             if List.length p = 1
             then
@@ -188,8 +200,18 @@ module CodePrinter =
                 let stateTyName = sprintf "%s%d" stateTy toState
                 fprintf writer "let st : %s = " stateTyName
                 let prevStateName = Option.defaultValue (sprintf "state%d" state) prevStateName
-                assembleState toState var stateTyName prevStateName
-                in__ ()
+                let recVars = Map.find toState recVarMap |> fst |> List.map fst
+                let bindVar v =
+                    if v = var
+                    then Var var
+                    else
+                        match !codeGenMode with
+                        | FStar -> App (Var (sprintf "Mkstate%d?.%s" state v), (Var "st"))
+                        | _ -> Var (sprintf "st.%s" v)
+                let stateVars = Map.find state stateVarMap |> fst |> List.map fst
+                let recExprs = List.map (CFSMAnalysis.bindVars stateVars bindVar >> CFSMAnalysis.termToString)recExprs
+                assembleState writer stateVarMap recVarMap toState var stateTyName prevStateName (List.zip recVars recExprs)
+                in__ writer
                 fprintfn writer "%srunState%d st" returnBang toState
             else failwith "Currently only support single payload"
         if List.contains state finalStates
@@ -215,8 +237,8 @@ module CodePrinter =
                         indent writer
                         let stateTyName = sprintf "%s%d_%s" stateTy state label
                         fprintf writer "let st : %s = " stateTyName
-                        assembleState state "" stateTyName (sprintf "state%d" state)
-                        in__ ()
+                        assembleState writer stateVarMap recVarMap state "" stateTyName (sprintf "state%d" state) []
+                        in__ writer
                         generateForTransition transition (Some stateTyName)
                         unindent writer
                     fprintfn writer "let label = callbacks.state%d st%s" state in_
@@ -248,14 +270,21 @@ module CodePrinter =
 
 
     let generateRuntimeCode writer (cfsm : CFSM) stateVarMap =
-        let initState, _, _, _ = cfsm
+        let initState, _, _, recVarMap = cfsm
         let states = allStates cfsm
+        let in__ writer = if !codeGenMode = FStar then fprintfn writer "in"
+        let stateTy = if !codeGenMode = FStar then "state" else "State"
+        let stateName = sprintf "%s%d" stateTy initState
         indent writer
         printfn "%A" cfsm
         List.fold (generateRunState writer cfsm stateVarMap) true states |> ignore
-        if !codeGenMode = FStar
-        then fprintfn writer "in"
-        fprintfn writer "runState%d ()" initState
+        in__ writer
+        fprintfn writer "let initState : %s =" stateName
+        indent writer
+        assembleState writer stateVarMap recVarMap initState "" stateName "" []
+        unindent writer
+        in__ writer
+        fprintfn writer "runState%d initState" initState
         unindent writer
 
     let writeCommunicationDef writer =
