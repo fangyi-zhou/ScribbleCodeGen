@@ -94,16 +94,19 @@ module Parsing =
             (* No assertion *)
             "", str
 
+    let fixAssertionDiscrepancy assertions =
+        let assertions = Regex.Replace(assertions, @"\bTrue\b", "true")
+        let assertions = Regex.Replace(assertions, @"\bFalse\b", "false")
+        (* "true" means no assertions *)
+        if assertions = "true" then "" else assertions
+
     let parseNewAssertionString str : string * char seq =
         let assertions, rest = span ((<>) '}') str
         let assertions =
             match Seq.tryHead assertions with
             | Some '{' ->
                 let assertions = Seq.tail assertions |> seqToString
-                let assertions = Regex.Replace(assertions, @"\bTrue\b", "true")
-                let assertions = Regex.Replace(assertions, @"\bFalse\b", "false")
-                (* "true" means no assertions *)
-                if assertions = "true" then "" else assertions
+                fixAssertionDiscrepancy assertions
             | _ -> failwith "invalid assertion, missing '{'"
         let rest =
             match Seq.tryHead rest with
@@ -170,7 +173,7 @@ module Parsing =
                 match Seq.tryHead rest with
                 | Some '>' ->
                     let acc = if Seq.isEmpty expr then acc else (parseSingle expr) :: acc
-                    List.rev acc, seqToString (Seq.tail rest)
+                    List.rev acc, fixAssertionDiscrepancy (seqToString (Seq.tail rest))
                 | Some ',' -> aux (Seq.tail rest) ((parseSingle expr) :: acc)
                 | _ -> failwith "Unexpected recursion expression"
             aux (Seq.tail str) []
