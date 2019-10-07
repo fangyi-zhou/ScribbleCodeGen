@@ -65,13 +65,19 @@ module CFSMAnalysis =
         List.mapFold addVariableWithRefinements (refinements, List.map (fun (x, y) -> x, y, None) vars) payloads
 
     let constructVariableMap (cfsm : CFSM) : StateVariableMap =
-        let init, finals, allTransitions, _recVars = cfsm
+        let init, finals, allTransitions, recVars = cfsm
         let rec aux (varMap : StateVariableMap) state (vars, assertions) =
             if Map.containsKey state varMap
             then varMap
             else if List.contains state finals
             then Map.add state ([], []) varMap
             else
+                let recVar, recAssertion =
+                    match Map.tryFind state recVars with
+                    | Some (recVar, recAssertion) -> List.map (fun (v, _) -> v, "int") recVar, recAssertion
+                    | None -> [], []
+                let vars = recVar @ vars
+                let assertions = recAssertion @ assertions
                 let varMap = Map.add state (vars, assertions) varMap
                 let transitions = Map.find state allTransitions
                 let updateWithTransition transition =
