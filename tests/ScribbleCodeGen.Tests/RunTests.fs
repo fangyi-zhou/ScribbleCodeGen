@@ -5,7 +5,7 @@ open System.Text.RegularExpressions
 open System.IO
 open ScribbleCodeGen
 
-module Tests = 
+module Tests =
     let fixQuotes stuff =
         (* DotParser has issues parsing escaped quotes, we replace them with single quotes *)
         (* This can be removed after https://github.com/auduchinok/DotParser/pull/6 is merged *)
@@ -14,14 +14,14 @@ module Tests =
     let tmpPath = Path.GetTempPath()
 
     let count = ref 1
-    let runCodeGen content protocol localRole codeGenMode recursiveRefinement outFileName = 
+    let runCodeGen content protocol localRole codeGenMode recursiveRefinement outFileName =
         let tmpFile = sprintf "%s/%s" tmpPath outFileName
         CodePrinter.fileName := tmpFile
         count := !count + 1
         let content = fixQuotes content
         Library.processScribbleOutput content protocol localRole codeGenMode recursiveRefinement
         tmpFile
-    
+
     let cmpContent expected actual =
         let exp = File.ReadAllText(expected)
         let act = File.ReadAllText(actual)
@@ -30,7 +30,7 @@ module Tests =
     let discoverTests () =
         let rec findInPath path : seq<string> =
             let dirs = Directory.GetDirectories(path)
-            let nested = Seq.collect findInPath dirs 
+            let nested = Seq.collect findInPath dirs
             let files = Directory.GetFiles(path)
             let inputFiles = Seq.filter (fun (f : string) -> Path.GetExtension(f) = ".in") files
             Seq.append nested inputFiles
@@ -40,7 +40,7 @@ module Tests =
         oldTestFiles, newTestFiles
 
     let makeTestCase files recursiveRefinement =
-        let makeSingleTestCase (f:string) codeGenMode = 
+        let makeSingleTestCase (f:string) codeGenMode =
             let dirName = Path.GetDirectoryName(f)
             let filename = Path.GetFileNameWithoutExtension(f)
             let protocol = Seq.takeWhile ((<>) '_') filename |> Seq.map string |> String.concat ""
@@ -48,11 +48,16 @@ module Tests =
             let content = File.ReadAllText(f)
             let outExtension = if codeGenMode = FStar then ".fst" else ".fs"
             let testCaseName = if codeGenMode = FStar then "F*" else "F#"
-            testCase testCaseName <| fun () -> 
+            testCase testCaseName <| fun () ->
                 let outFileName = sprintf "%s%s%s%s" "Generated" protocol localRole outExtension
                 let expected = sprintf "%s/%s" dirName outFileName
                 let actual = runCodeGen content protocol localRole codeGenMode recursiveRefinement outFileName
+                let actualFileName = sprintf "%s.actual" expected
+                if File.Exists(actualFileName)
+                then File.Delete(actualFileName)
+                File.Copy(actual, actualFileName)
                 cmpContent expected actual
+                File.Delete(actualFileName)
         let makeTestCasesForFile f =
             testSequenced <| testList f [
                 makeSingleTestCase f FStar;
@@ -73,4 +78,3 @@ module RunTests =
     [<EntryPoint>]
     let main args =
         runTestsInAssembly defaultConfig args
-
