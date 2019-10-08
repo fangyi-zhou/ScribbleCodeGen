@@ -106,4 +106,7 @@ let run (callbacks : callbacksB) (comms : communications) : ML unit =
                 in
                 runState24 st
     in
-    runState23 ()
+    let initState : state23 =
+        ()
+    in
+    runState23 initState
