@@ -91,4 +91,6 @@ let run (callbacks : CallbacksS) (comms : Communications) : Async<unit> =
                     return! runState8 st
                 | _ -> failwith "unexpected label"
         }
-    runState7 ()
+    let initState : State7 =
+        ()
+    runState7 initState

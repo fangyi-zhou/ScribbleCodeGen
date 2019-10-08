@@ -200,7 +200,7 @@ module CodePrinter =
                 let stateTyName = sprintf "%s%d" stateTy toState
                 fprintf writer "let st : %s = " stateTyName
                 let prevStateName = Option.defaultValue (sprintf "state%d" state) prevStateName
-                let recVars = Map.find toState recVarMap |> fst |> List.map fst
+                let recVars = Map.tryFind toState recVarMap |> Option.map (fst >> List.map fst) |> Option.defaultValue []
                 let bindVar v =
                     if v = var
                     then Var var

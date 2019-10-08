@@ -129,4 +129,6 @@ let run (callbacks : CallbacksA) (comms : Communications) : Async<unit> =
             let st : State20 = ()
             return! runState20 st
         }
-    runState19 ()
+    let initState : State19 =
+        ()
+    runState19 initState

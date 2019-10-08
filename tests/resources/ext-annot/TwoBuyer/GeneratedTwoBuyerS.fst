@@ -94,4 +94,7 @@ let run (callbacks : callbacksS) (comms : communications) : ML unit =
                 runState8 st
             | _ -> unexpected "unexpected label"
     in
-    runState7 ()
+    let initState : state7 =
+        ()
+    in
+    runState7 initState
