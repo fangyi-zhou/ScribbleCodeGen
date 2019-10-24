@@ -1,4 +1,5 @@
 FSharp.Core
 FluidTypes.AnnotationParsing
 FSharpx.Collections
-FsLexYacc.Runtime
+FSharpx.Core
+DotParser

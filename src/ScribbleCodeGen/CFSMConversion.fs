@@ -69,7 +69,7 @@ module CFSMConversion =
             let assertion = parseAssertionAndChunk assertion
             Map.add state (recvars, assertion) recVarMap
 
-    let convert (graph: GraphData.GraphData) (recursiveRefinement: bool) : CFSM =
+    let convert (graph: DotParser.GraphData) (recursiveRefinement: bool) : CFSM =
         newSyntax := recursiveRefinement
         let edges = graph.Edges
         let nodes = graph.Nodes

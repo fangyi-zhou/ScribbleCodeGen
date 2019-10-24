@@ -6,11 +6,6 @@ open System.IO
 open ScribbleCodeGen
 
 module Tests =
-    let fixQuotes stuff =
-        (* DotParser has issues parsing escaped quotes, we replace them with single quotes *)
-        (* This can be removed after https://github.com/auduchinok/DotParser/pull/6 is merged *)
-        Regex.Replace(stuff, "\\\\\"", "$")
-
     let tmpPath = Path.GetTempPath()
 
     let count = ref 1
@@ -18,7 +13,6 @@ module Tests =
         let tmpFile = sprintf "%s/%s" tmpPath outFileName
         CodePrinter.fileName := tmpFile
         count := !count + 1
-        let content = fixQuotes content
         Library.processScribbleOutput content protocol localRole codeGenMode recursiveRefinement
         tmpFile
 

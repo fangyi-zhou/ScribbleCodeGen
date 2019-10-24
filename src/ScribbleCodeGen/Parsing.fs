@@ -75,20 +75,19 @@ module Parsing =
         | _ -> failwith "invalid action"
 
     let parseOldAssertionString str : string * char seq =
-        (* dollar is used to wrap the assertion instead of quotes due to DotParser issue *)
         match Seq.tryHead str with
         | Some '@' ->
             let str = Seq.tail str
             match Seq.head str with
-            | '$' ->
+            | '\"' ->
                 let str = Seq.tail str
-                let assertion, rest = span ((<>) '$') str
+                let assertion, rest = span ((<>) '\"') str
                 let rest =
                     match Seq.head rest with
-                    | '$' -> Seq.tail rest
-                    | _ -> failwith "unfinished assertion, missing '$'"
+                    | '\"' -> Seq.tail rest
+                    | _ -> failwith "unfinished assertion, missing '\"'"
                 seqToString assertion, rest
-            | _ -> failwith "invalid assertion, missing '$'"
+            | _ -> failwith "invalid assertion, missing '\"'"
         | Some _ -> failwithf "unknown assertion %s" (seqToString str)
         | None ->
             (* No assertion *)

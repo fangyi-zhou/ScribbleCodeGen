@@ -22,11 +22,6 @@ type CliArgument =
             | Output _ -> "Path to Output Filename"
             | Recursion -> "Allow Refinements on Recursion (Scribble dev-assrt)"
 
-let fixQuotes stuff =
-    (* DotParser has issues parsing escaped quotes, we replace them with single quotes *)
-    (* This can be removed after https://github.com/auduchinok/DotParser/pull/6 is merged *)
-    Regex.Replace(stuff, "\\\\\"", "$")
-
 [<EntryPoint>]
 let main argv =
     let errorHandler = ProcessExiter()
@@ -42,6 +37,5 @@ let main argv =
         let outputFileName = results.GetResult Output
         CodePrinter.fileName := outputFileName
     let content = File.ReadAllText(filename)
-    let content = fixQuotes content
     Library.processScribbleOutput content protocol localRole codeGenMode recursiveRefinement
     0
