@@ -29,7 +29,8 @@ module CodePrinter =
     let writeTypeDefPreamble (writer: IndentedTextWriter) isFirst (name: string) content =
         let noeq = if name.StartsWith("Callbacks") && !codeGenMode = FStar then "noeq " else "" (* Yet another nasty HACK *)
         let preamble =
-            if isFirst then noeq + "type" else "and"
+            // if isFirst then noeq + "type" else "and"
+            noeq + "type"
         let name = if !codeGenMode = FStar then ensureStartsWithLowerCase name else name
         fprintfn writer "%s %s%s" preamble name content
 
@@ -321,7 +322,6 @@ module CodePrinter =
             fprintfn writer "let run (callbacks : Callbacks%s) (comms : Communications) : Async<unit> =" localRole
             generateRuntimeCode writer cfsm stateVarMap
         | FStar ->
-            (*TODO*)
             fprintfn writer "let run (callbacks : callbacks%s) (comms : communications) : ML unit =" localRole
             generateRuntimeCode writer cfsm stateVarMap
         writer.Flush()
