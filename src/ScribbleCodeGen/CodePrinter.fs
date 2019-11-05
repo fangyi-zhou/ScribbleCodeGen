@@ -322,6 +322,13 @@ module CodePrinter =
             fprintfn writer "let run (callbacks : Callbacks%s) (comms : Communications) : Async<unit> =" localRole
             generateRuntimeCode writer cfsm stateVarMap
         | FStar ->
+            let states = allStates cfsm
+            let mkStatesUnionCase state : UnionCase =
+                let stCapName = sprintf "State%d" state
+                let stSmallName = sprintf "state%d" state
+                stCapName, [stSmallName], None
+            let content = Map.ofList ["states", Union (List.map mkStatesUnionCase states)]
+            writeContents writer content
             fprintfn writer "let run (callbacks : callbacks%s) (comms : communications) : ML unit =" localRole
             generateRuntimeCode writer cfsm stateVarMap
         writer.Flush()
