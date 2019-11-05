@@ -161,8 +161,14 @@ module CodePrinter =
         let stateTy = if !codeGenMode = FStar then "state" else "State"
         let _, finalStates, transitions, recVarMap = cfsm
         let functionName = sprintf "runState%d" state
-        let preamble = if isInit then "let rec" else "and"
-        fprintfn writer "%s %s (st: %s%d) : %s =" preamble functionName stateTy state (if !codeGenMode = FStar then "ML unit" else "Async<unit>")
+        let preamble =
+            if !codeGenMode = FStar then "let"
+            else if isInit then "let rec" else "and"
+        if !codeGenMode = FStar
+        then
+            fprintfn writer "%s %s (st: %s%d) : %s =" preamble functionName stateTy state (if List.contains state finalStates then "ML unit" else "ML states")
+        else
+            fprintfn writer "%s %s (st: %s%d) : %s =" preamble functionName stateTy state "Async<unit>"
         indent writer
         if !codeGenMode = EventApi
         then
@@ -213,16 +219,21 @@ module CodePrinter =
                 let recExprs = List.map (CFSMAnalysis.bindVars stateVars bindVar >> CFSMAnalysis.termToString)recExprs
                 assembleState writer stateVarMap recVarMap toState var stateTyName prevStateName (List.zip recVars recExprs)
                 in__ writer
-                fprintfn writer "%srunState%d st" returnBang toState
+                if !codeGenMode = FStar
+                then
+                    fprintfn writer "State%d st" toState
+                else fprintfn writer "%srunState%d st" returnBang toState
             else failwith "Currently only support single payload"
         if List.contains state finalStates
         then
             writeln writer "()"
+            in__ writer
         else
             let stateTransition = Map.find state transitions
             if List.length stateTransition = 1 && (List.head stateTransition).action = Send
             then (* Singleton send *)
                 generateForTransition (List.head stateTransition) None
+                in__ writer
             else (* Branch and Select *)
                 match List.head stateTransition with
                 (* From Scribble, we know that the action of all outgoing transitions must be the same *)
@@ -247,6 +258,7 @@ module CodePrinter =
                     indent writer
                     List.iter generateCase stateTransition
                     unindent writer
+                    in__ writer
                 | {action = Receive; partner = role} ->
                     let generateCase transition =
                         let label = transition.label
@@ -261,6 +273,7 @@ module CodePrinter =
                     let fail = if !codeGenMode = FStar then "unexpected" else "failwith"
                     fprintfn writer "| _ -> %s \"unexpected label\"" fail
                     unindent writer
+                    in__ writer
                 | _ -> writeln writer "TODO"
         if !codeGenMode = EventApi
         then
@@ -269,6 +282,21 @@ module CodePrinter =
         unindent writer
         false
 
+    let generateRuntimeDispatch writer cfsm =
+        let _, finalStates, _, _ = cfsm
+        let states = allStates cfsm
+        let generateMatchCase st =
+            let match_right =
+                if List.contains st finalStates then "()" else sprintf "let st = runState%d state%d in runStates st" st st
+            let match_left = sprintf "| State%d state%d" st st
+            fprintfn writer "%s -> %s" match_left match_right
+        fprintfn writer "let rec runStates (st: states) : ML unit ="
+        indent writer
+        fprintfn writer "match st with"
+        List.iter generateMatchCase states
+        unindent writer
+        fprintfn writer "in"
+        ()
 
     let generateRuntimeCode writer (cfsm : CFSM) stateVarMap =
         let initState, _, _, recVarMap = cfsm
@@ -279,13 +307,17 @@ module CodePrinter =
         indent writer
         printfn "%A" cfsm
         List.fold (generateRunState writer cfsm stateVarMap) true states |> ignore
-        in__ writer
+        //in__ writer
+        if !codeGenMode = FStar
+        then generateRuntimeDispatch writer cfsm
         fprintfn writer "let initState : %s =" stateName
         indent writer
         assembleState writer stateVarMap recVarMap initState "" stateName "" []
         unindent writer
         in__ writer
-        fprintfn writer "runState%d initState" initState
+        if !codeGenMode = FStar
+        then fprintfn writer "runStates (State%d initState)" initState
+        else fprintfn writer "runState%d initState" initState
         unindent writer
 
     let writeCommunicationDef writer =
