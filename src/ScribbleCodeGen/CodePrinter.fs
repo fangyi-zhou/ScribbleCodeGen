@@ -166,7 +166,7 @@ module CodePrinter =
             else if isInit then "let rec" else "and"
         if !codeGenMode = FStar
         then
-            fprintfn writer "%s %s (st: %s%d) : %s =" preamble functionName stateTy state (if List.contains state finalStates then "ML unit" else "ML states")
+            fprintfn writer "%s %s (st: %s%d) callbacks comms: %s =" preamble functionName stateTy state (if List.contains state finalStates then "ML unit" else "ML states")
         else
             fprintfn writer "%s %s (st: %s%d) : %s =" preamble functionName stateTy state "Async<unit>"
         indent writer
@@ -227,13 +227,13 @@ module CodePrinter =
         if List.contains state finalStates
         then
             writeln writer "()"
-            in__ writer
+            //in__ writer
         else
             let stateTransition = Map.find state transitions
             if List.length stateTransition = 1 && (List.head stateTransition).action = Send
             then (* Singleton send *)
                 generateForTransition (List.head stateTransition) None
-                in__ writer
+                //in__ writer
             else (* Branch and Select *)
                 match List.head stateTransition with
                 (* From Scribble, we know that the action of all outgoing transitions must be the same *)
@@ -258,7 +258,7 @@ module CodePrinter =
                     indent writer
                     List.iter generateCase stateTransition
                     unindent writer
-                    in__ writer
+                    //in__ writer
                 | {action = Receive; partner = role} ->
                     let generateCase transition =
                         let label = transition.label
@@ -273,7 +273,7 @@ module CodePrinter =
                     let fail = if !codeGenMode = FStar then "unexpected" else "failwith"
                     fprintfn writer "| _ -> %s \"unexpected label\"" fail
                     unindent writer
-                    in__ writer
+                    //in__ writer
                 | _ -> writeln writer "TODO"
         if !codeGenMode = EventApi
         then
@@ -287,7 +287,7 @@ module CodePrinter =
         let states = allStates cfsm
         let generateMatchCase st =
             let match_right =
-                if List.contains st finalStates then "()" else sprintf "let st = runState%d state%d in runStates st" st st
+                if List.contains st finalStates then "()" else sprintf "let st = runState%d state%d callbacks comms in runStates st" st st
             let match_left = sprintf "| State%d state%d" st st
             fprintfn writer "%s -> %s" match_left match_right
         fprintfn writer "let rec runStates (st: states) : ML unit ="
@@ -298,16 +298,17 @@ module CodePrinter =
         fprintfn writer "in"
         ()
 
-    let generateRuntimeCode writer (cfsm : CFSM) stateVarMap =
-        let initState, _, _, recVarMap = cfsm
-        let states = allStates cfsm
-        let in__ writer = if !codeGenMode = FStar then fprintfn writer "in"
-        let stateTy = if !codeGenMode = FStar then "state" else "State"
-        let stateName = sprintf "%s%d" stateTy initState
+    let generateRuntimeCode1 writer (cfsm : CFSM) stateVarMap =
         indent writer
+        let states = allStates cfsm
         printfn "%A" cfsm
         List.fold (generateRunState writer cfsm stateVarMap) true states |> ignore
-        //in__ writer
+
+    let generateRuntimeCode2 writer (cfsm : CFSM) stateVarMap =
+        let in__ writer = if !codeGenMode = FStar then fprintfn writer "in"
+        let initState, _, _, recVarMap = cfsm
+        let stateTy = if !codeGenMode = FStar then "state" else "State"
+        let stateName = sprintf "%s%d" stateTy initState
         if !codeGenMode = FStar
         then generateRuntimeDispatch writer cfsm
         fprintfn writer "let initState : %s =" stateName
@@ -352,7 +353,8 @@ module CodePrinter =
             fprintfn writer "let init = %s" (mkStateName init)
         | EventApi ->
             fprintfn writer "let run (callbacks : Callbacks%s) (comms : Communications) : Async<unit> =" localRole
-            generateRuntimeCode writer cfsm stateVarMap
+            generateRuntimeCode1 writer cfsm stateVarMap
+            generateRuntimeCode2 writer cfsm stateVarMap
         | FStar ->
             let states = allStates cfsm
             let mkStatesUnionCase state : UnionCase =
@@ -361,7 +363,8 @@ module CodePrinter =
                 stCapName, [stSmallName], None
             let content = Map.ofList ["states", Union (List.map mkStatesUnionCase states)]
             writeContents writer content
+            generateRuntimeCode1 writer cfsm stateVarMap
             fprintfn writer "let run (callbacks : callbacks%s) (comms : communications) : ML unit =" localRole
-            generateRuntimeCode writer cfsm stateVarMap
+            generateRuntimeCode2 writer cfsm stateVarMap
         writer.Flush()
         ()
